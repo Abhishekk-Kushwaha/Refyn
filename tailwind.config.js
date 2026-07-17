@@ -1,0 +1,51 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        bg: 'var(--bg)',
+        surface: 'var(--surface)',
+        'surface-raised': 'var(--surface-raised)',
+        border: 'var(--border)',
+        'border-strong': 'var(--border-strong)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-muted': 'var(--text-muted)',
+        accent: 'var(--accent)',
+        'accent-hover': 'var(--accent-hover)',
+        'accent-text': 'var(--accent-text)',
+        'accent-subtle': 'var(--accent-subtle)',
+        danger: 'var(--danger)',
+        'danger-subtle': 'var(--danger-subtle)',
+        success: 'var(--success)',
+        'success-subtle': 'var(--success-subtle)',
+        info: 'var(--info)',
+        'info-subtle': 'var(--info-subtle)',
+        skeleton: 'var(--skeleton)',
+        overlay: 'var(--overlay)',
+      },
+      fontFamily: {
+        display: 'var(--font-display)',
+        body: 'var(--font-body)',
+        mono: 'var(--font-mono)',
+      },
+      borderRadius: {
+        xs: '4px',
+        sm: '8px',
+        md: '12px',
+        lg: '16px',
+      },
+      spacing: {
+        xs: '4px',
+        sm: '8px',
+        md: '12px',
+        lg: '16px',
+        xl: '24px',
+        '2xl': '32px',
+        '3xl': '48px',
+      },
+    },
+  },
+  plugins: [],
+}
