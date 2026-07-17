@@ -31,7 +31,10 @@ export const OnboardingView = () => {
   };
 
   const toggleWeakArea = (area: string) => {
-    const current = onboarding.weakAreas;
+    // Reads the live store instead of the render closure's `onboarding` — otherwise
+    // consecutive toggles in the same batch (e.g. multi-select) each compute their
+    // "updated" array from the same stale snapshot and the last call silently wins.
+    const current = useAuthStore.getState().onboarding.weakAreas;
     const updated = current.includes(area)
       ? current.filter((a) => a !== area)
       : [...current, area];

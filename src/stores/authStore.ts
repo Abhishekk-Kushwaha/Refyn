@@ -15,6 +15,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   session: null,
   onboarding: {
     weakAreas: [],
+    dailyTarget: 20,
     isComplete: false,
   },
   isLoading: false,
@@ -39,7 +40,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   logout: () => {
     set({
       session: null,
-      onboarding: { weakAreas: [], isComplete: false },
+      onboarding: { weakAreas: [], dailyTarget: 20, isComplete: false },
     });
   },
 
