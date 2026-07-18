@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui';
 import { EmptyState } from '@/components/feedback';
 import { useSessionStore } from '@/stores/sessionStore';
-import { saveSession } from '@/services/sessions.service';
+import { saveSession, saveAttempts, AttemptRecord } from '@/services/sessions.service';
 
 interface TopicBreakdown {
   topicName: string;
@@ -48,6 +48,7 @@ export const PracticeReviewView = () => {
   useEffect(() => {
     if (stats.total === 0 || hasSavedRef.current) return;
     hasSavedRef.current = true;
+
     saveSession({
       mode,
       totalQuestions: stats.total,
@@ -55,6 +56,23 @@ export const PracticeReviewView = () => {
       accuracy: stats.accuracy,
       avgTimeSeconds: stats.avgTime,
     });
+
+    // Persist per-question attempts (answered only — skips carry no concept signal)
+    // so the weakness engine has real data to score against.
+    const now = new Date().toISOString();
+    const attempts: AttemptRecord[] = questions
+      .map((q) => ({ q, answer: answers[q.id] }))
+      .filter(({ answer }) => answer && !answer.skipped && answer.selectedAnswer !== null)
+      .map(({ q, answer }) => ({
+        questionId: q.id,
+        subtopicId: q.subtopicId,
+        subtopicName: q.subtopicName,
+        topicName: q.topicName,
+        isCorrect: answer!.isCorrect,
+        timeTakenSeconds: answer!.timeTakenSeconds,
+        attemptedAt: now,
+      }));
+    saveAttempts(attempts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats.total]);
 

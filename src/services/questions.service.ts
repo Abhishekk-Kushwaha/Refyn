@@ -43,3 +43,30 @@ export const getQuestionsForPractice = async (
     throw new AppError('UNKNOWN', "Couldn't load questions. Please try again.", e);
   }
 };
+
+/**
+ * Pull questions for a single subtopic — powers "Start targeted drill" from a
+ * weak topic on the dashboard. Same swap-for-Supabase contract as above.
+ */
+export const getQuestionsForSubtopic = async (
+  examId: string,
+  subtopicId: string,
+  questionCount = 5
+): Promise<MockQuestion[]> => {
+  void examId;
+  await delay(500);
+
+  try {
+    const pool = MOCK_QUESTIONS.filter((q) => q.subtopicId === subtopicId);
+    const selected = shuffle(pool).slice(0, questionCount);
+
+    if (selected.length === 0) {
+      throw new AppError('NOT_FOUND', 'No questions available for this topic yet.');
+    }
+
+    return selected;
+  } catch (e) {
+    if (e instanceof AppError) throw e;
+    throw new AppError('UNKNOWN', "Couldn't load questions. Please try again.", e);
+  }
+};

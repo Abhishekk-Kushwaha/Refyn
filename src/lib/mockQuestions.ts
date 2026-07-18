@@ -175,3 +175,24 @@ export const MOCK_QUESTIONS: MockQuestion[] = [
 ];
 
 export const TOPIC_NAMES = Array.from(new Set(MOCK_QUESTIONS.map((q) => q.topicName)));
+
+// Per-subtopic weighting mirroring the seeded taxonomy (frequency_weight) and
+// per-topic weighting (topics.topic_weight from CAT_Topic_Weights). The weakness
+// formula reads these; when Supabase lands they come from the subtopics/topics tables.
+export interface SubtopicMeta {
+  frequencyWeight: number; // 0.4 low · 0.7 medium · 1.0 high · 1.3 very high
+  topicWeight: number; // Arithmetic 1.0 · Algebra 0.95 · Geometry 0.7 · Modern 0.45 · Number System 0.4
+}
+
+export const SUBTOPIC_META: Record<string, SubtopicMeta> = {
+  'sub-pl': { frequencyWeight: 1.3, topicWeight: 1.0 },
+  'sub-tsd': { frequencyWeight: 1.3, topicWeight: 1.0 },
+  'sub-work': { frequencyWeight: 1.3, topicWeight: 1.0 },
+  'sub-quad': { frequencyWeight: 1.3, topicWeight: 0.95 },
+  'sub-ratio': { frequencyWeight: 1.3, topicWeight: 1.0 },
+  'sub-tri': { frequencyWeight: 1.3, topicWeight: 0.7 },
+  'sub-ci': { frequencyWeight: 1.0, topicWeight: 1.0 },
+  'sub-numsys': { frequencyWeight: 0.7, topicWeight: 0.4 },
+  'sub-avg': { frequencyWeight: 1.0, topicWeight: 1.0 },
+  'sub-pnc': { frequencyWeight: 1.0, topicWeight: 0.45 },
+};

@@ -10,7 +10,8 @@
       "Bash(npx tsc *)",
       "Read(//tmp/**)",
       "Bash(sleep 5 && cat /tmp/refyn_dev.log 2>/dev/null || echo \"no log yet\")",
-      "Bash(curl -s http://localhost:5176)"
+      "Bash(curl -s http://localhost:5176)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5176/)"
     ]
   }
 }
