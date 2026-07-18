@@ -1,4 +1,4 @@
-import { MOCK_QUESTIONS, MockQuestion } from '@/lib/mockQuestions';
+import { ALL_QUESTIONS, MOCK_QUESTIONS, MockQuestion } from '@/lib/mockQuestions';
 import { AppError } from '@/lib/errors';
 
 export interface PracticeConfig {
@@ -57,7 +57,9 @@ export const getQuestionsForSubtopic = async (
   await delay(500);
 
   try {
-    const pool = MOCK_QUESTIONS.filter((q) => q.subtopicId === subtopicId);
+    // Drills include verified replicas — reinforcement supply is their whole
+    // purpose (Doc 5 §7).
+    const pool = ALL_QUESTIONS.filter((q) => q.subtopicId === subtopicId);
     const selected = shuffle(pool).slice(0, questionCount);
 
     if (selected.length === 0) {

@@ -9,10 +9,11 @@ interface WeakTopicCardProps {
 }
 
 const bandConfig: Record<WeaknessBand, { label: string; text: string; border: string }> = {
-  critical: { label: 'CRITICAL', text: 'text-danger', border: 'border-l-danger' },
+  critical: { label: 'VERY WEAK', text: 'text-danger', border: 'border-l-danger' },
   weak: { label: 'WEAK', text: 'text-danger', border: 'border-l-danger' },
+  learning: { label: 'LEARNING', text: 'text-info', border: 'border-l-info' },
   improving: { label: 'IMPROVING', text: 'text-accent', border: 'border-l-accent' },
-  strong: { label: 'STRONG', text: 'text-success', border: 'border-l-success' },
+  strong: { label: 'MASTERED', text: 'text-success', border: 'border-l-success' },
   untested: { label: 'NEW', text: 'text-text-muted', border: 'border-l-border-strong' },
 };
 

@@ -5,16 +5,22 @@ import { Button } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { useToast } from '@/components/feedback';
 import { getQuestionsForPractice, PracticeConfig } from '@/services/questions.service';
-import { TOPIC_NAMES } from '@/lib/mockQuestions';
+import { ALL_QUESTIONS, TOPIC_NAMES } from '@/lib/mockQuestions';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useExamStore } from '@/stores/examStore';
 import { getErrorMessage } from '@/lib/errors';
+import { aweEngine } from '@/engine/engine';
 import clsx from 'clsx';
 
-type Mode = 'weakness' | 'mock' | 'topic';
+type Mode = 'daily' | 'mock' | 'topic';
 
 const modeOptions: { id: Mode; label: string; description: string; icon: string }[] = [
-  { id: 'weakness', label: 'Fix Weaknesses', description: 'Targeted drill on your weak topics', icon: '🎯' },
+  {
+    id: 'daily',
+    label: 'Daily Smart Quiz',
+    description: 'AWE blend: 70% your weak concepts · 20% revision · 10% mixed',
+    icon: '🧠',
+  },
   { id: 'mock', label: 'Mixed Practice', description: 'Random questions across all topics', icon: '🎲' },
   { id: 'topic', label: 'Pick a Topic', description: 'Focus on one specific topic', icon: '📂' },
 ];
@@ -27,7 +33,7 @@ export const PracticeConfigView = () => {
   const startSession = useSessionStore((state) => state.startSession);
   const examId = useExamStore((state) => state.selectedExamId) ?? 'cat';
 
-  const [mode, setMode] = useState<Mode>('weakness');
+  const [mode, setMode] = useState<Mode>('daily');
   const [questionCount, setQuestionCount] = useState(10);
   const [isTimed, setIsTimed] = useState(true);
   const [topicFilter, setTopicFilter] = useState<string>(TOPIC_NAMES[0]);
@@ -38,16 +44,25 @@ export const PracticeConfigView = () => {
     setLoading(true);
     setError(null);
 
-    const config: PracticeConfig = {
-      mode,
-      questionCount,
-      isTimed,
-      topicFilter: mode === 'topic' ? topicFilter : undefined,
-    };
-
     try {
-      const questions = await getQuestionsForPractice(examId, config);
-      startSession(questions, mode, isTimed);
+      if (mode === 'daily') {
+        // AWE-composed blend (70/20/10). Falls back to balanced coverage when
+        // the engine has no weak data yet — always returns a runnable quiz.
+        const questions = aweEngine.buildDailyQuiz(ALL_QUESTIONS, questionCount);
+        if (questions.length === 0) {
+          throw new Error('No questions available yet. Try again.');
+        }
+        startSession(questions, 'weakness', isTimed);
+      } else {
+        const config: PracticeConfig = {
+          mode,
+          questionCount,
+          isTimed,
+          topicFilter: mode === 'topic' ? topicFilter : undefined,
+        };
+        const questions = await getQuestionsForPractice(examId, config);
+        startSession(questions, mode, isTimed);
+      }
       navigate('/practice/session');
     } catch (e) {
       setError(getErrorMessage(e));

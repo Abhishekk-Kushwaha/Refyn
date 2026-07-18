@@ -11,6 +11,10 @@ export interface MockQuestion {
   solution: string;
   difficulty: number;
   expectedTimeSeconds: number;
+  // Replica stand-ins (Doc 5 §7): hand-authored look-alikes of a parent question,
+  // treated as pre-verified. The Gemini pipeline later slots in behind the same flag.
+  isReplica?: boolean;
+  parentQuestionId?: string;
 }
 
 export const MOCK_QUESTIONS: MockQuestion[] = [
@@ -173,6 +177,121 @@ export const MOCK_QUESTIONS: MockQuestion[] = [
     expectedTimeSeconds: 100,
   },
 ];
+
+// ============================================================
+// REPLICA QUESTIONS — hand-authored variants of parent questions, standing in
+// for the Gemini generation + verification pipeline (Doc 5 §7). The engine
+// treats them as status='verified'; the generator later drops in behind the
+// same isReplica flag with zero changes to consuming code.
+// ============================================================
+
+export const REPLICA_QUESTIONS: MockQuestion[] = [
+  {
+    id: 'r1-q1',
+    subtopicId: 'sub-pl',
+    subtopicName: 'Profit & Loss',
+    topicName: 'Arithmetic',
+    externalId: 'REPLICA_PL_01',
+    isReplica: true,
+    parentQuestionId: 'q1',
+    questionText:
+      'A trader marks an item 50% above its cost price and then offers a 20% discount on the marked price. What is his profit percentage?',
+    questionType: 'mcq',
+    options: { a: '10%', b: '15%', c: '20%', d: '25%' },
+    correctAnswer: 'c',
+    solution: 'Let CP = 100. Marked = 150. After 20% discount: 150 × 0.8 = 120. Profit = 20%.',
+    difficulty: 4,
+    expectedTimeSeconds: 90,
+  },
+  {
+    id: 'r1-q2',
+    subtopicId: 'sub-tsd',
+    subtopicName: 'Relative Speed',
+    topicName: 'Arithmetic',
+    externalId: 'REPLICA_TSD_01',
+    isReplica: true,
+    parentQuestionId: 'q2',
+    questionText:
+      'Two trains, each 200 m long, run on parallel tracks in opposite directions, each at 36 km/h. How long do they take to cross each other?',
+    questionType: 'mcq',
+    options: { a: '15 seconds', b: '18 seconds', c: '20 seconds', d: '24 seconds' },
+    correctAnswer: 'c',
+    solution: 'Relative speed = 36 + 36 = 72 km/h = 20 m/s. Distance = 200 + 200 = 400 m. Time = 400 / 20 = 20 s.',
+    difficulty: 5,
+    expectedTimeSeconds: 100,
+  },
+  {
+    id: 'r1-q3',
+    subtopicId: 'sub-work',
+    subtopicName: 'Multiple Workers',
+    topicName: 'Arithmetic',
+    externalId: 'REPLICA_TW_01',
+    isReplica: true,
+    parentQuestionId: 'q3',
+    questionText:
+      'A can complete a job in 10 days and B in 15 days. They work together for 4 days, after which A leaves. In how many more days will B finish the remaining work? (Enter a number)',
+    questionType: 'tita',
+    correctAnswer: '5',
+    solution:
+      'Combined rate = 1/10 + 1/15 = 1/6. In 4 days: 4/6 = 2/3 done. Remaining 1/3. B alone: (1/3)/(1/15) = 5 days.',
+    difficulty: 6,
+    expectedTimeSeconds: 120,
+  },
+  {
+    id: 'r1-q4',
+    subtopicId: 'sub-quad',
+    subtopicName: 'Roots',
+    topicName: 'Algebra',
+    externalId: 'REPLICA_QUAD_01',
+    isReplica: true,
+    parentQuestionId: 'q4',
+    questionText: 'If the roots of x² − 9x + k = 0 are in the ratio 1:2, what is the value of k?',
+    questionType: 'mcq',
+    options: { a: '12', b: '14', c: '18', d: '20' },
+    correctAnswer: 'c',
+    solution: 'Roots a, 2a. Sum = 3a = 9 → a = 3. Roots 3, 6. Product k = 18.',
+    difficulty: 6,
+    expectedTimeSeconds: 110,
+  },
+  {
+    id: 'r1-q5',
+    subtopicId: 'sub-ratio',
+    subtopicName: 'Basic Ratio',
+    topicName: 'Arithmetic',
+    externalId: 'REPLICA_RATIO_01',
+    isReplica: true,
+    parentQuestionId: 'q5',
+    questionText:
+      'The ratio of the ages of A and B, 4 years ago, was 5:7. Their present age ratio is 3:4. What is the present age of A?',
+    questionType: 'mcq',
+    options: { a: '20 years', b: '24 years', c: '28 years', d: '32 years' },
+    correctAnswer: 'b',
+    solution:
+      'Ages 4 years ago: 5k, 7k. Present: 5k+4, 7k+4. (5k+4)/(7k+4) = 3/4 → 20k+16 = 21k+12 → k = 4. A = 5(4)+4 = 24.',
+    difficulty: 5,
+    expectedTimeSeconds: 100,
+  },
+  {
+    id: 'r1-q6',
+    subtopicId: 'sub-tri',
+    subtopicName: 'Basic Properties',
+    topicName: 'Geometry',
+    externalId: 'REPLICA_TRI_01',
+    isReplica: true,
+    parentQuestionId: 'q6',
+    questionText:
+      'In a right triangle, the two legs are 6 cm and 8 cm. What is the length of the altitude drawn to the hypotenuse?',
+    questionType: 'mcq',
+    options: { a: '4.2 cm', b: '4.8 cm', c: '5.0 cm', d: '5.6 cm' },
+    correctAnswer: 'b',
+    solution: 'Hypotenuse = √(36+64) = 10. Area = (1/2)(6)(8) = 24. Altitude = 2×24/10 = 4.8 cm.',
+    difficulty: 5,
+    expectedTimeSeconds: 100,
+  },
+];
+
+// The full servable pool: originals + verified replicas.
+export const ALL_QUESTIONS: MockQuestion[] = [...MOCK_QUESTIONS, ...REPLICA_QUESTIONS];
 
 export const TOPIC_NAMES = Array.from(new Set(MOCK_QUESTIONS.map((q) => q.topicName)));
 

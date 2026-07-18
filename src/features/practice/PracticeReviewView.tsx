@@ -5,6 +5,7 @@ import { Button } from '@/components/ui';
 import { EmptyState } from '@/components/feedback';
 import { useSessionStore } from '@/stores/sessionStore';
 import { saveSession, saveAttempts, AttemptRecord } from '@/services/sessions.service';
+import { aweEngine } from '@/engine/engine';
 
 interface TopicBreakdown {
   topicName: string;
@@ -60,19 +61,28 @@ export const PracticeReviewView = () => {
     // Persist per-question attempts (answered only — skips carry no concept signal)
     // so the weakness engine has real data to score against.
     const now = new Date().toISOString();
-    const attempts: AttemptRecord[] = questions
+    const answered = questions
       .map((q) => ({ q, answer: answers[q.id] }))
-      .filter(({ answer }) => answer && !answer.skipped && answer.selectedAnswer !== null)
-      .map(({ q, answer }) => ({
-        questionId: q.id,
-        subtopicId: q.subtopicId,
-        subtopicName: q.subtopicName,
-        topicName: q.topicName,
-        isCorrect: answer!.isCorrect,
-        timeTakenSeconds: answer!.timeTakenSeconds,
-        attemptedAt: now,
-      }));
+      .filter(({ answer }) => answer && !answer.skipped && answer.selectedAnswer !== null);
+
+    const attempts: AttemptRecord[] = answered.map(({ q, answer }) => ({
+      questionId: q.id,
+      subtopicId: q.subtopicId,
+      subtopicName: q.subtopicName,
+      topicName: q.topicName,
+      isCorrect: answer!.isCorrect,
+      timeTakenSeconds: answer!.timeTakenSeconds,
+      attemptedAt: now,
+    }));
     saveAttempts(attempts);
+
+    // Fire the AWE triggers (Doc 5 §10): per-attempt rules (R001/R002), then
+    // the session-level transitions (R003–R006) on this quiz's per-concept accuracy.
+    answered.forEach(({ q, answer }) => aweEngine.onAttemptSaved(q, answer!.isCorrect, now));
+    aweEngine.onSessionCompleted(
+      answered.map(({ q, answer }) => ({ question: q, isCorrect: answer!.isCorrect })),
+      now
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats.total]);
 
