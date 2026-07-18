@@ -164,9 +164,11 @@ export const getDoubts = async (
   filter: BoardFilter,
   currentUserId: string
 ): Promise<Doubt[]> => {
-  void examId;
   await delay(250);
-  let doubts = loadDoubts();
+  // The board is exam-scoped (Architecture Rule 4): a CAT student's board only
+  // ever shows CAT doubts. In Phase 1 this becomes WHERE exam_id = $1 on the
+  // doubts table — cross-exam posts are invisible by query, not by convention.
+  let doubts = loadDoubts().filter((d) => d.examId === examId);
   if (filter === 'unanswered') doubts = doubts.filter((d) => d.answerCount === 0);
   if (filter === 'mine') doubts = doubts.filter((d) => d.authorId === currentUserId);
   return doubts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
