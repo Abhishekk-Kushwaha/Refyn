@@ -1,9 +1,10 @@
 import { AWE_CONFIG, AweConfig } from './aweConfig';
 import { applyAttempt, applyConceptQuizResult, initConceptMastery } from './rules';
 import { buildQuiz } from './quizBuilder';
-import { initFlashcardState } from './flashcardSM2';
+import { initFlashcardState, isDue, reviewGotIt, reviewNotSure } from './flashcardSM2';
+import { recomputeScores } from './masteryScore';
 import { AweStore, LocalStorageAweStore } from './store';
-import { ConceptMastery, EngineAction, QueueItem } from './types';
+import { ConceptMastery, EngineAction, FlashcardState, QueueItem } from './types';
 import { MockQuestion, SUBTOPIC_META } from '@/lib/mockQuestions';
 import { MOCK_FLASHCARDS } from '@/lib/mockFlashcards';
 
@@ -162,6 +163,53 @@ export class AweEngine {
   setExamDate(iso: string | null): void {
     const meta = this.store.getMeta();
     this.store.saveMeta({ ...meta, examDate: iso });
+  }
+
+  // ---- Flashcards (Doc 5 §8) ----
+
+  getFlashcardStates(): FlashcardState[] {
+    return Object.values(this.store.getFlashcards());
+  }
+
+  /** Cards due now, weakest concept first (priorityWeight desc). */
+  getDueFlashcards(now = new Date().toISOString()): FlashcardState[] {
+    const masteries = this.store.getMasteries();
+    return this.getFlashcardStates()
+      .filter((s) => isDue(s, now))
+      .sort(
+        (a, b) =>
+          (masteries[b.conceptId]?.priorityWeight ?? 0) -
+          (masteries[a.conceptId]?.priorityWeight ?? 0)
+      );
+  }
+
+  /**
+   * Apply an SM-2 review (R010/R011) and nudge the concept's mastery —
+   * consistent flashcard success is a positive mastery signal between quizzes;
+   * a "Not sure" is a guard against false mastery (Doc 5 §8).
+   */
+  reviewFlashcard(cardId: string, gotIt: boolean, now = new Date().toISOString()): FlashcardState {
+    const cards = this.store.getFlashcards();
+    const current = cards[cardId];
+    if (!current) throw new Error(`Unknown flashcard state: ${cardId}`);
+
+    const next = gotIt ? reviewGotIt(current, now) : reviewNotSure(current, now);
+    cards[cardId] = next;
+    this.store.saveFlashcards(cards);
+
+    const masteries = this.store.getMasteries();
+    const m = masteries[current.conceptId];
+    if (m) {
+      const updated = { ...m };
+      updated.masteryScore = gotIt
+        ? Math.min(100, Math.round((updated.masteryScore + 2) * 10) / 10)
+        : Math.round(updated.masteryScore * 0.95 * 10) / 10;
+      recomputeScores(updated, now);
+      masteries[updated.conceptId] = updated;
+      this.store.saveMasteries(masteries);
+    }
+
+    return next;
   }
 }
 
