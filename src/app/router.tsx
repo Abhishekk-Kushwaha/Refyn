@@ -12,6 +12,8 @@ const PracticeSessionView = lazy(() => import('@/features/practice/PracticeSessi
 const PracticeReviewView = lazy(() => import('@/features/practice/PracticeReviewView').then((m) => ({ default: m.PracticeReviewView })));
 const FlashcardsView = lazy(() => import('@/features/flashcards/FlashcardsView').then((m) => ({ default: m.FlashcardsView })));
 const BoardView = lazy(() => import('@/features/board/BoardView').then((m) => ({ default: m.BoardView })));
+const NewDoubtView = lazy(() => import('@/features/board/NewDoubtView').then((m) => ({ default: m.NewDoubtView })));
+const DoubtThreadView = lazy(() => import('@/features/board/DoubtThreadView').then((m) => ({ default: m.DoubtThreadView })));
 const ProfileView = lazy(() => import('@/features/profile/ProfileView').then((m) => ({ default: m.ProfileView })));
 const AppLayout = lazy(() => import('@/components/layout/AppLayout').then((m) => ({ default: m.AppLayout })));
 
@@ -86,6 +88,14 @@ const shellRoutes = [
           {
             path: '/board',
             element: <LazyComponent component={<BoardView />} />,
+          },
+          {
+            path: '/board/new',
+            element: <LazyComponent component={<NewDoubtView />} />,
+          },
+          {
+            path: '/board/:doubtId',
+            element: <LazyComponent component={<DoubtThreadView />} />,
           },
           {
             path: '/profile',
