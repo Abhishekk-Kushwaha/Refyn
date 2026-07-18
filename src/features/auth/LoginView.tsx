@@ -9,6 +9,7 @@ export const LoginView = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
+  const skipAuth = useAuthStore((state) => state.skipAuth);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +22,11 @@ export const LoginView = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSkip = () => {
+    skipAuth();
+    navigate('/dashboard');
   };
 
   return (
@@ -99,15 +105,26 @@ export const LoginView = () => {
           </p>
         </motion.form>
 
+        {/* Explore without auth (demo mode) */}
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25 }}
+          type="button"
+          onClick={handleSkip}
+          className="w-full mt-4 py-2 text-sm text-text-muted hover:text-accent transition-colors"
+        >
+          Skip for now — explore the app →
+        </motion.button>
+
         {/* Footer */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-center mt-8 text-xs text-text-muted space-y-1"
+          className="text-center mt-6 text-xs text-text-muted space-y-1"
         >
-          <p>🚀 Phase 0 Foundation Complete</p>
-          <p>Phase 2: Onboarding + Navigation</p>
+          <p>🚀 Demo mode — no account needed</p>
         </motion.div>
       </motion.div>
     </div>
