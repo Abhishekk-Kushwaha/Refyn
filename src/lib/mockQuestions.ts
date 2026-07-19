@@ -15,6 +15,12 @@ export interface MockQuestion {
   // treated as pre-verified. The Gemini pipeline later slots in behind the same flag.
   isReplica?: boolean;
   parentQuestionId?: string;
+  // Real-taxonomy weights, present when the question came from Supabase (joined
+  // from subtopics.frequency_weight / topics.topic_weight). For mock questions
+  // these are absent and the engine falls back to SUBTOPIC_META. Carrying them on
+  // the question lets the engine weight real UUID-keyed concepts correctly.
+  frequencyWeight?: number;
+  topicWeight?: number;
 }
 
 export const MOCK_QUESTIONS: MockQuestion[] = [

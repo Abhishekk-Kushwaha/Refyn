@@ -3,7 +3,8 @@ import { applyAttempt, applyConceptQuizResult, initConceptMastery } from './rule
 import { buildQuiz } from './quizBuilder';
 import { initFlashcardState, isDue, reviewGotIt, reviewNotSure } from './flashcardSM2';
 import { recomputeScores } from './masteryScore';
-import { AweStore, LocalStorageAweStore } from './store';
+import { AweStore } from './store';
+import { HybridAweStore } from './hybridStore';
 import { ConceptMastery, EngineAction, FlashcardState, QueueItem } from './types';
 import { MockQuestion, SUBTOPIC_META } from '@/lib/mockQuestions';
 import { MOCK_FLASHCARDS } from '@/lib/mockFlashcards';
@@ -29,13 +30,15 @@ export class AweEngine {
   ): ConceptMastery {
     const existing = masteries[question.subtopicId];
     if (existing) return existing;
+    // Prefer weights carried on the question (real Supabase taxonomy); fall back
+    // to the mock meta table, then to neutral 1.0.
     const meta = SUBTOPIC_META[question.subtopicId] ?? { frequencyWeight: 1, topicWeight: 1 };
     return initConceptMastery({
       conceptId: question.subtopicId,
       conceptName: question.subtopicName,
       topicName: question.topicName,
-      topicWeight: meta.topicWeight,
-      frequencyWeight: meta.frequencyWeight,
+      topicWeight: question.topicWeight ?? meta.topicWeight,
+      frequencyWeight: question.frequencyWeight ?? meta.frequencyWeight,
     });
   }
 
@@ -213,5 +216,17 @@ export class AweEngine {
   }
 }
 
-// App-wide singleton over localStorage. Tests construct their own with MemoryAweStore.
-export const aweEngine = new AweEngine(new LocalStorageAweStore());
+// App-wide singleton over the hybrid store. Tests construct their own with
+// MemoryAweStore. The store is (re)configured per auth state via the helpers below.
+const hybridStore = new HybridAweStore();
+export const aweEngine = new AweEngine(hybridStore);
+
+/** Demo/explore: point the engine at localStorage-backed state. */
+export const configureAweLocal = (): void => hybridStore.configureLocal();
+
+/** Signed-in: hydrate the engine from the user's awe_state row. */
+export const configureAweSupabase = (userId: string, examSlug: string): Promise<void> =>
+  hybridStore.configureSupabase(userId, examSlug);
+
+/** Persist any pending engine writes immediately (before sign-out). */
+export const flushAwe = (): Promise<void> => hybridStore.flushNow();

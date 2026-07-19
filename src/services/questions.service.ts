@@ -1,5 +1,6 @@
-import { ALL_QUESTIONS, MOCK_QUESTIONS, MockQuestion } from '@/lib/mockQuestions';
+import { MockQuestion } from '@/lib/mockQuestions';
 import { AppError } from '@/lib/errors';
+import { getPool } from './questionPool';
 
 export interface PracticeConfig {
   mode: 'weakness' | 'mock' | 'topic';
@@ -12,23 +13,25 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
 
-// Mirrors the shape of services/questions.service.ts from the Architecture doc —
-// swap this body for a real Supabase call in Phase 1 without touching callers.
+// Reads from the runtime pool (mocks in demo, the real Supabase bank when
+// signed in — see questionPool.ts). Callers are unchanged from Phase 0.
 export const getQuestionsForPractice = async (
   examId: string,
   config: PracticeConfig
 ): Promise<MockQuestion[]> => {
-  void examId; // required per Architecture doc Rule 4; unused until Phase 1 swaps in Supabase
-  await delay(500);
+  void examId; // pool is already scoped to the active exam
+  await delay(300);
 
   try {
-    let pool = MOCK_QUESTIONS;
+    // Non-replica originals for general/mock/topic practice; replicas are
+    // reserved for targeted reinforcement drills.
+    let poolQuestions = getPool().filter((q) => !q.isReplica);
 
     if (config.mode === 'topic' && config.topicFilter) {
-      pool = pool.filter((q) => q.topicName === config.topicFilter);
+      poolQuestions = poolQuestions.filter((q) => q.topicName === config.topicFilter);
     }
 
-    const selected = shuffle(pool).slice(0, config.questionCount);
+    const selected = shuffle(poolQuestions).slice(0, config.questionCount);
 
     if (selected.length === 0) {
       throw new AppError(
@@ -46,7 +49,7 @@ export const getQuestionsForPractice = async (
 
 /**
  * Pull questions for a single subtopic — powers "Start targeted drill" from a
- * weak topic on the dashboard. Same swap-for-Supabase contract as above.
+ * weak topic on the dashboard. Includes verified replicas (reinforcement supply).
  */
 export const getQuestionsForSubtopic = async (
   examId: string,
@@ -54,12 +57,10 @@ export const getQuestionsForSubtopic = async (
   questionCount = 5
 ): Promise<MockQuestion[]> => {
   void examId;
-  await delay(500);
+  await delay(300);
 
   try {
-    // Drills include verified replicas — reinforcement supply is their whole
-    // purpose (Doc 5 §7).
-    const pool = ALL_QUESTIONS.filter((q) => q.subtopicId === subtopicId);
+    const pool = getPool().filter((q) => q.subtopicId === subtopicId);
     const selected = shuffle(pool).slice(0, questionCount);
 
     if (selected.length === 0) {

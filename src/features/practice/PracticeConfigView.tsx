@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { useToast } from '@/components/feedback';
 import { getQuestionsForPractice, PracticeConfig } from '@/services/questions.service';
-import { ALL_QUESTIONS, TOPIC_NAMES } from '@/lib/mockQuestions';
+import { getPool } from '@/services/questionPool';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useExamStore } from '@/stores/examStore';
 import { getErrorMessage } from '@/lib/errors';
@@ -33,10 +33,16 @@ export const PracticeConfigView = () => {
   const startSession = useSessionStore((state) => state.startSession);
   const examId = useExamStore((state) => state.selectedExamId) ?? 'cat';
 
+  // Topics available in the live pool (real DB topics when signed in, mocks in demo).
+  const topicNames = useMemo(
+    () => Array.from(new Set(getPool().map((q) => q.topicName))).sort(),
+    []
+  );
+
   const [mode, setMode] = useState<Mode>('daily');
   const [questionCount, setQuestionCount] = useState(10);
   const [isTimed, setIsTimed] = useState(true);
-  const [topicFilter, setTopicFilter] = useState<string>(TOPIC_NAMES[0]);
+  const [topicFilter, setTopicFilter] = useState<string>(topicNames[0] ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +54,7 @@ export const PracticeConfigView = () => {
       if (mode === 'daily') {
         // AWE-composed blend (70/20/10). Falls back to balanced coverage when
         // the engine has no weak data yet — always returns a runnable quiz.
-        const questions = aweEngine.buildDailyQuiz(ALL_QUESTIONS, questionCount);
+        const questions = aweEngine.buildDailyQuiz(getPool(), questionCount);
         if (questions.length === 0) {
           throw new Error('No questions available yet. Try again.');
         }
@@ -123,7 +129,7 @@ export const PracticeConfigView = () => {
               Topic
             </h4>
             <div className="grid grid-cols-2 gap-2">
-              {TOPIC_NAMES.map((topic) => (
+              {topicNames.map((topic) => (
                 <button
                   key={topic}
                   onClick={() => setTopicFilter(topic)}

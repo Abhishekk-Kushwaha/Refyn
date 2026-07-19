@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { AuthSession, OnboardingState } from '@/types/auth.types';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabase/client';
 import { getExamUuid } from '@/services/taxonomy.service';
+import { configureAweLocal, configureAweSupabase, flushAwe } from '@/engine/engine';
+import { configureQuestionPoolDemo, configureQuestionPoolSupabase } from '@/services/questionPool';
 
 // Real auth (Supabase magic link) + a persisted demo/explore mode.
 // Demo sessions never touch the database — every service dual-paths on
@@ -82,6 +84,12 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         isComplete: profile?.onboarding_complete ?? false,
       },
     });
+
+    // Point questions + AWE at the live database for this user.
+    await Promise.all([
+      configureQuestionPoolSupabase('cat').catch(() => configureQuestionPoolDemo()),
+      configureAweSupabase(userId, 'cat'),
+    ]);
   };
 
   return {
@@ -95,11 +103,15 @@ export const useAuthStore = create<AuthStore>((set, get) => {
 
       // Demo/explore mode wins if flagged — works with or without Supabase.
       if (hasDemoFlag()) {
+        configureAweLocal();
+        configureQuestionPoolDemo();
         set({ session: demoSession, isDemo: true, onboarding: demoOnboarding, status: 'ready' });
         return;
       }
 
       if (!isSupabaseConfigured) {
+        configureAweLocal();
+        configureQuestionPoolDemo();
         set({ status: 'ready' });
         return;
       }
@@ -108,6 +120,10 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         await loadProfile(data.session.user.id, data.session.user.email);
+      } else {
+        // No session yet — the login screen runs on the mock pool/local engine.
+        configureAweLocal();
+        configureQuestionPoolDemo();
       }
 
       supabase.auth.onAuthStateChange((event, session) => {
@@ -132,12 +148,17 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     },
 
     verifyOtp: async (email: string, token: string) => {
-      const { error } = await getSupabase().auth.verifyOtp({
+      const { data, error } = await getSupabase().auth.verifyOtp({
         email,
         token,
         type: 'email',
       });
       if (error) throw error;
+      // Hydrate profile + engine before returning so the dashboard renders with
+      // this user's real weakness data already loaded (no empty-then-populate flash).
+      if (data.user) {
+        await loadProfile(data.user.id, data.user.email);
+      }
     },
 
     skipAuth: () => {
@@ -146,11 +167,15 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       } catch {
         // still works for this tab
       }
+      configureAweLocal();
+      configureQuestionPoolDemo();
       set({ session: demoSession, isDemo: true, onboarding: demoOnboarding });
     },
 
     logout: async () => {
       const { isDemo } = get();
+      // Flush any pending engine writes before tearing down the session.
+      if (!isDemo) await flushAwe();
       try {
         localStorage.removeItem(DEMO_KEY);
       } catch {
@@ -159,6 +184,9 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       if (!isDemo && isSupabaseConfigured) {
         await getSupabase().auth.signOut();
       }
+      // Reset the engine + pool to a clean local state for the login screen.
+      configureAweLocal();
+      configureQuestionPoolDemo();
       set({ session: null, isDemo: false, onboarding: emptyOnboarding });
     },
 

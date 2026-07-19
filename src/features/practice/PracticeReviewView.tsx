@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui';
 import { EmptyState } from '@/components/feedback';
 import { useSessionStore } from '@/stores/sessionStore';
-import { saveSession, saveAttempts, AttemptRecord } from '@/services/sessions.service';
+import { persistSession, AttemptRecord } from '@/services/sessions.service';
 import { aweEngine } from '@/engine/engine';
 
 interface TopicBreakdown {
@@ -50,16 +50,8 @@ export const PracticeReviewView = () => {
     if (stats.total === 0 || hasSavedRef.current) return;
     hasSavedRef.current = true;
 
-    saveSession({
-      mode,
-      totalQuestions: stats.total,
-      correctCount: stats.correctCount,
-      accuracy: stats.accuracy,
-      avgTimeSeconds: stats.avgTime,
-    });
-
     // Persist per-question attempts (answered only — skips carry no concept signal)
-    // so the weakness engine has real data to score against.
+    // so history has real data. Session + attempts are written together (linked).
     const now = new Date().toISOString();
     const answered = questions
       .map((q) => ({ q, answer: answers[q.id] }))
@@ -73,8 +65,20 @@ export const PracticeReviewView = () => {
       isCorrect: answer!.isCorrect,
       timeTakenSeconds: answer!.timeTakenSeconds,
       attemptedAt: now,
+      // replicas attribute their DB attempt to the parent question row
+      dbQuestionId: q.isReplica ? q.parentQuestionId : q.id,
     }));
-    saveAttempts(attempts);
+
+    persistSession(
+      {
+        mode,
+        totalQuestions: stats.total,
+        correctCount: stats.correctCount,
+        accuracy: stats.accuracy,
+        avgTimeSeconds: stats.avgTime,
+      },
+      attempts
+    );
 
     // Fire the AWE triggers (Doc 5 §10): per-attempt rules (R001/R002), then
     // the session-level transitions (R003–R006) on this quiz's per-concept accuracy.
