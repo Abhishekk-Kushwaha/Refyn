@@ -4,6 +4,11 @@ import { getSupabase, isSupabaseConfigured } from '@/services/supabase/client';
 import { getExamUuid } from '@/services/taxonomy.service';
 import { configureAweLocal, configureAweSupabase, flushAwe } from '@/engine/engine';
 import { configureQuestionPoolDemo, configureQuestionPoolSupabase } from '@/services/questionPool';
+import {
+  configureFlashcardPoolDemo,
+  configureFlashcardPoolSupabase,
+  resetFlashcardPool,
+} from '@/services/flashcardPool';
 
 // Real auth (Supabase magic link) + a persisted demo/explore mode.
 // Demo sessions never touch the database — every service dual-paths on
@@ -101,6 +106,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     // Point questions + AWE at the live database for this user.
     await Promise.all([
       configureQuestionPoolSupabase('cat').catch(() => configureQuestionPoolDemo()),
+      configureFlashcardPoolSupabase().catch(() => configureFlashcardPoolDemo()),
       configureAweSupabase(userId, 'cat'),
     ]);
   };
@@ -118,6 +124,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       if (hasDemoFlag()) {
         configureAweLocal();
         configureQuestionPoolDemo();
+        configureFlashcardPoolDemo();
         set({ session: demoSession, isDemo: true, onboarding: demoOnboarding, status: 'ready' });
         return;
       }
@@ -125,6 +132,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       if (!isSupabaseConfigured) {
         configureAweLocal();
         configureQuestionPoolDemo();
+        configureFlashcardPoolDemo();
         set({ status: 'ready' });
         return;
       }
@@ -137,6 +145,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         // No session yet — the login screen runs on the mock pool/local engine.
         configureAweLocal();
         configureQuestionPoolDemo();
+        configureFlashcardPoolDemo();
       }
 
       supabase.auth.onAuthStateChange((event, session) => {
@@ -182,6 +191,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       }
       configureAweLocal();
       configureQuestionPoolDemo();
+      configureFlashcardPoolDemo();
       set({ session: demoSession, isDemo: true, onboarding: demoOnboarding });
     },
 
@@ -200,6 +210,9 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       // Reset the engine + pool to a clean local state for the login screen.
       configureAweLocal();
       configureQuestionPoolDemo();
+      // Full reset (not the demo pool): the next sign-in must refetch the real
+      // card bank rather than inherit the mock one.
+      resetFlashcardPool();
       set({ session: null, isDemo: false, onboarding: emptyOnboarding });
     },
 

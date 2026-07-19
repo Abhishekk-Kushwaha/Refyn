@@ -5,7 +5,8 @@ import { Button } from '@/components/ui';
 import { EmptyState } from '@/components/feedback';
 import { aweEngine } from '@/engine/engine';
 import { FlashcardState } from '@/engine/types';
-import { MOCK_FLASHCARDS, MockFlashcard } from '@/lib/mockFlashcards';
+import { MockFlashcard } from '@/lib/mockFlashcards';
+import { getFlashcardPool } from '@/services/flashcardPool';
 
 interface DeckCard {
   state: FlashcardState;
@@ -30,7 +31,7 @@ export const FlashcardsView = () => {
     return aweEngine
       .getDueFlashcards()
       .map((state) => {
-        const content = MOCK_FLASHCARDS.find((c) => c.id === state.cardId);
+        const content = getFlashcardPool().find((c) => c.id === state.cardId);
         if (!content) return null;
         return {
           state,

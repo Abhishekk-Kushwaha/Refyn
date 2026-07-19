@@ -7,7 +7,7 @@ import { AweStore } from './store';
 import { HybridAweStore } from './hybridStore';
 import { ConceptMastery, EngineAction, FlashcardState, QueueItem } from './types';
 import { MockQuestion, SUBTOPIC_META } from '@/lib/mockQuestions';
-import { MOCK_FLASHCARDS } from '@/lib/mockFlashcards';
+import { getFlashcardPool } from '@/services/flashcardPool';
 
 // ============================================================
 // AWE ENGINE FACADE — the three triggers (Doc 5 §10) over pure rules.
@@ -68,7 +68,7 @@ export class AweEngine {
         queueChanged = true;
       } else if (action.type === 'queue_flashcards') {
         // Materialize SM-2 state for this concept's cards so they're due now.
-        const cards = MOCK_FLASHCARDS.filter((c) => c.conceptId === action.conceptId).slice(
+        const cards = getFlashcardPool().filter((c) => c.conceptId === action.conceptId).slice(
           0,
           action.count
         );
