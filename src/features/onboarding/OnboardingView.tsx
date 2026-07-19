@@ -11,7 +11,7 @@ export const OnboardingView = () => {
   const { onboarding, updateOnboarding, completeOnboarding } = useAuthStore();
   const [step, setStep] = useState<Step>('exam');
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === 'exam') {
       if (!onboarding.selectedExamId) return;
       setStep('weak-areas');
@@ -20,7 +20,7 @@ export const OnboardingView = () => {
       setStep('daily-target');
     } else if (step === 'daily-target') {
       if (!onboarding.dailyTarget) return;
-      completeOnboarding();
+      await completeOnboarding(); // persists to profiles + user_exams for real accounts
       navigate('/dashboard');
     }
   };

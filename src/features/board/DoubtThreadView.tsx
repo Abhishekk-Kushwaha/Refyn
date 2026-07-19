@@ -48,6 +48,7 @@ export const DoubtThreadView = () => {
         authorId: user.id,
         authorName: user.displayName ?? 'Anonymous',
         body: answerBody,
+        conceptId: data?.doubt.conceptId, // credibility snapshot is per-concept
       });
       setAnswerBody('');
       toast.success('Answer posted!');

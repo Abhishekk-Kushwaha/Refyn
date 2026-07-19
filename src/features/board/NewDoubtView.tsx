@@ -1,26 +1,30 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Button, Input, Textarea } from '@/components/ui';
 import { useToast } from '@/components/feedback';
 import { postDoubt } from '@/services/doubts.service';
+import { getSubtopicOptions } from '@/services/taxonomy.service';
 import { useAuthStore } from '@/stores/authStore';
 import { useExamStore } from '@/stores/examStore';
 import { getErrorMessage } from '@/lib/errors';
-import { MOCK_QUESTIONS } from '@/lib/mockQuestions';
 import clsx from 'clsx';
 
 export const NewDoubtView = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const user = useAuthStore((s) => s.session?.user);
+  const isDemo = useAuthStore((s) => s.isDemo);
   const examId = useExamStore((s) => s.selectedExamId) ?? 'cat';
 
-  const concepts = useMemo(() => {
-    const seen = new Map<string, string>();
-    MOCK_QUESTIONS.forEach((q) => seen.set(q.subtopicId, q.subtopicName));
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
-  }, []);
+  // Real accounts tag against the seeded 126-subtopic taxonomy; demo mode
+  // uses the mock bank's concepts.
+  const { data: concepts = [] } = useQuery({
+    queryKey: ['subtopic-options', isDemo],
+    queryFn: () => getSubtopicOptions(!isDemo && !!user),
+    staleTime: Infinity,
+  });
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');

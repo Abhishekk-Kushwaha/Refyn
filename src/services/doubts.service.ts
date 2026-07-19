@@ -1,9 +1,15 @@
 import { AppError } from '@/lib/errors';
 import { aweEngine } from '@/engine/engine';
+import { getSupabase } from './supabase/client';
+import { getExamUuid } from './taxonomy.service';
+import { useAuthStore } from '@/stores/authStore';
 
-// Doubt board service — mock/localStorage today, mirrors the doubts / answers /
-// answer_votes tables (Database doc §3.7) so Phase 1 swaps storage only.
-// Realtime updates and image upload arrive with Supabase.
+// Doubt board service — dual-path:
+//   · signed-in users hit Supabase (doubts / answers / answer_votes tables)
+//   · demo/explore sessions stay on the localStorage mock, seeded so the
+//     board isn't empty
+// Requires SQL/seed_content.sql to be applied (author_name +
+// author_credibility columns, votes read policy, helpful_count trigger).
 
 export interface Doubt {
   id: string;
@@ -24,16 +30,199 @@ export interface DoubtAnswer {
   doubtId: string;
   authorId: string;
   authorName: string;
-  // Accuracy % in the doubt's concept at time of answering — the credibility
-  // badge. null = answerer hasn't practiced that concept (no badge).
-  authorCredibility: number | null;
+  authorCredibility: number | null; // accuracy % snapshot at answer time
   body: string;
   helpfulCount: number;
-  votedBy: string[]; // client-first stand-in for the answer_votes table
+  votedBy: string[];
   createdAt: string;
 }
 
 export type BoardFilter = 'all' | 'unanswered' | 'mine';
+
+const isRealSession = (): boolean => {
+  const { session, isDemo } = useAuthStore.getState();
+  return Boolean(session && !isDemo);
+};
+
+/** Current user's accuracy in a concept, from the AWE — the credibility source. */
+export const getOwnCredibility = (conceptId: string | undefined): number | null => {
+  if (!conceptId) return null;
+  const m = aweEngine.getMasteries().find((x) => x.conceptId === conceptId);
+  if (!m || m.attempts < 3) return null; // too little data to badge honestly
+  return Math.round(m.accuracy);
+};
+
+// ============================================================
+// SUPABASE PATH
+// ============================================================
+
+interface DoubtRow {
+  id: string;
+  user_id: string;
+  author_name: string | null;
+  exam_id: string;
+  subtopic_id: string | null;
+  title: string;
+  body: string | null;
+  is_resolved: boolean;
+  answer_count: number;
+  created_at: string;
+  subtopics: { name: string } | null;
+}
+
+const mapDoubtRow = (row: DoubtRow, examSlug: string): Doubt => ({
+  id: row.id,
+  authorId: row.user_id,
+  authorName: row.author_name ?? 'Student',
+  examId: examSlug,
+  conceptId: row.subtopic_id ?? undefined,
+  conceptName: row.subtopics?.name,
+  title: row.title,
+  body: row.body ?? '',
+  isResolved: row.is_resolved,
+  answerCount: row.answer_count,
+  createdAt: row.created_at,
+});
+
+const sbGetDoubts = async (
+  examSlug: string,
+  filter: BoardFilter,
+  currentUserId: string
+): Promise<Doubt[]> => {
+  const examUuid = await getExamUuid(examSlug);
+  let query = getSupabase()
+    .from('doubts')
+    .select('*, subtopics(name)')
+    .eq('exam_id', examUuid)
+    .order('created_at', { ascending: false });
+
+  if (filter === 'unanswered') query = query.eq('answer_count', 0);
+  if (filter === 'mine') query = query.eq('user_id', currentUserId);
+
+  const { data, error } = await query;
+  if (error) throw new AppError('UNKNOWN', "Couldn't load the board.", error);
+  return (data as DoubtRow[]).map((row) => mapDoubtRow(row, examSlug));
+};
+
+const sbGetDoubtThread = async (
+  doubtId: string
+): Promise<{ doubt: Doubt; answers: DoubtAnswer[] }> => {
+  const supabase = getSupabase();
+  const { data: doubtRow, error: doubtError } = await supabase
+    .from('doubts')
+    .select('*, subtopics(name)')
+    .eq('id', doubtId)
+    .single();
+  if (doubtError || !doubtRow) {
+    throw new AppError('NOT_FOUND', "This doubt doesn't exist or was removed.", doubtError);
+  }
+
+  const { data: answerRows, error: answersError } = await supabase
+    .from('answers')
+    .select('*, answer_votes(user_id)')
+    .eq('doubt_id', doubtId);
+  if (answersError) throw new AppError('UNKNOWN', "Couldn't load answers.", answersError);
+
+  const answers: DoubtAnswer[] = (answerRows ?? [])
+    .map((row) => ({
+      id: row.id,
+      doubtId: row.doubt_id,
+      authorId: row.user_id,
+      authorName: row.author_name ?? 'Student',
+      authorCredibility: row.author_credibility !== null ? Number(row.author_credibility) : null,
+      body: row.body,
+      helpfulCount: row.helpful_count ?? 0,
+      votedBy: (row.answer_votes ?? []).map((v: { user_id: string }) => v.user_id),
+      createdAt: row.created_at,
+    }))
+    .sort((a, b) => b.helpfulCount - a.helpfulCount || a.createdAt.localeCompare(b.createdAt));
+
+  return { doubt: mapDoubtRow(doubtRow as DoubtRow, 'cat'), answers };
+};
+
+const sbPostDoubt = async (input: {
+  examId: string;
+  authorId: string;
+  authorName: string;
+  title: string;
+  body: string;
+  conceptId?: string;
+}): Promise<Doubt> => {
+  const examUuid = await getExamUuid(input.examId);
+  const { data, error } = await getSupabase()
+    .from('doubts')
+    .insert({
+      user_id: input.authorId,
+      author_name: input.authorName,
+      exam_id: examUuid,
+      subtopic_id: input.conceptId ?? null,
+      title: input.title.trim(),
+      body: input.body.trim(),
+    })
+    .select('*, subtopics(name)')
+    .single();
+  if (error || !data) throw new AppError('UNKNOWN', "Couldn't post your doubt.", error);
+  return mapDoubtRow(data as DoubtRow, input.examId);
+};
+
+const sbPostAnswer = async (input: {
+  doubtId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  conceptId?: string;
+}): Promise<void> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from('answers').insert({
+    doubt_id: input.doubtId,
+    user_id: input.authorId,
+    author_name: input.authorName,
+    author_credibility: getOwnCredibility(input.conceptId),
+    body: input.body.trim(),
+  });
+  if (error) throw new AppError('UNKNOWN', "Couldn't post your answer.", error);
+
+  // SECURITY DEFINER function from master_setup — keeps answer_count in sync.
+  await supabase.rpc('increment_answer_count', { doubt_id: input.doubtId });
+};
+
+const sbToggleHelpful = async (answerId: string, userId: string): Promise<void> => {
+  const supabase = getSupabase();
+  const { data: existing } = await supabase
+    .from('answer_votes')
+    .select('answer_id')
+    .eq('answer_id', answerId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from('answer_votes')
+      .delete()
+      .eq('answer_id', answerId)
+      .eq('user_id', userId);
+    if (error) throw new AppError('UNKNOWN', "Couldn't remove your vote.", error);
+  } else {
+    const { error } = await supabase
+      .from('answer_votes')
+      .insert({ answer_id: answerId, user_id: userId });
+    if (error) throw new AppError('UNKNOWN', "Couldn't record your vote.", error);
+  }
+  // helpful_count is maintained by the answer_votes trigger (seed_content.sql).
+};
+
+const sbMarkResolved = async (doubtId: string, userId: string): Promise<void> => {
+  const { error } = await getSupabase()
+    .from('doubts')
+    .update({ is_resolved: true })
+    .eq('id', doubtId)
+    .eq('user_id', userId); // RLS enforces this too
+  if (error) throw new AppError('UNKNOWN', "Couldn't mark as resolved.", error);
+};
+
+// ============================================================
+// DEMO / LOCALSTORAGE PATH (seeded mock)
+// ============================================================
 
 const DOUBTS_KEY = 'refyn-doubts';
 const ANSWERS_KEY = 'refyn-doubt-answers';
@@ -41,8 +230,6 @@ const ANSWERS_KEY = 'refyn-doubt-answers';
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-
-// ---- seed content: fake peers so the board isn't a ghost town pre-launch ----
 
 const SEED_DOUBTS: Doubt[] = [
   {
@@ -122,8 +309,6 @@ const SEED_ANSWERS: DoubtAnswer[] = [
   },
 ];
 
-// ---- storage helpers (seed on first read) ----
-
 const loadDoubts = (): Doubt[] => {
   try {
     const raw = localStorage.getItem(DOUBTS_KEY);
@@ -149,25 +334,18 @@ const loadAnswers = (): DoubtAnswer[] => {
 const saveDoubts = (d: Doubt[]) => localStorage.setItem(DOUBTS_KEY, JSON.stringify(d));
 const saveAnswers = (a: DoubtAnswer[]) => localStorage.setItem(ANSWERS_KEY, JSON.stringify(a));
 
-/** Current user's accuracy in a concept, from the AWE — the credibility source. */
-export const getOwnCredibility = (conceptId: string | undefined): number | null => {
-  if (!conceptId) return null;
-  const m = aweEngine.getMasteries().find((x) => x.conceptId === conceptId);
-  if (!m || m.attempts < 3) return null; // too little data to badge honestly
-  return Math.round(m.accuracy);
-};
-
-// ---- the service API (Phase 1 swaps these bodies for Supabase queries) ----
+// ============================================================
+// PUBLIC API — dispatches per session type
+// ============================================================
 
 export const getDoubts = async (
   examId: string,
   filter: BoardFilter,
   currentUserId: string
 ): Promise<Doubt[]> => {
+  if (isRealSession()) return sbGetDoubts(examId, filter, currentUserId);
+
   await delay(250);
-  // The board is exam-scoped (Architecture Rule 4): a CAT student's board only
-  // ever shows CAT doubts. In Phase 1 this becomes WHERE exam_id = $1 on the
-  // doubts table — cross-exam posts are invisible by query, not by convention.
   let doubts = loadDoubts().filter((d) => d.examId === examId);
   if (filter === 'unanswered') doubts = doubts.filter((d) => d.answerCount === 0);
   if (filter === 'mine') doubts = doubts.filter((d) => d.authorId === currentUserId);
@@ -177,6 +355,8 @@ export const getDoubts = async (
 export const getDoubtThread = async (
   doubtId: string
 ): Promise<{ doubt: Doubt; answers: DoubtAnswer[] }> => {
+  if (isRealSession()) return sbGetDoubtThread(doubtId);
+
   await delay(250);
   const doubt = loadDoubts().find((d) => d.id === doubtId);
   if (!doubt) throw new AppError('NOT_FOUND', "This doubt doesn't exist or was removed.");
@@ -195,8 +375,10 @@ export const postDoubt = async (input: {
   conceptId?: string;
   conceptName?: string;
 }): Promise<Doubt> => {
-  await delay(300);
   if (!input.title.trim()) throw new AppError('VALIDATION_ERROR', 'Give your doubt a title.');
+  if (isRealSession()) return sbPostDoubt(input);
+
+  await delay(300);
   const doubt: Doubt = {
     id: uid(),
     authorId: input.authorId,
@@ -221,9 +403,12 @@ export const postAnswer = async (input: {
   authorId: string;
   authorName: string;
   body: string;
-}): Promise<DoubtAnswer> => {
+  conceptId?: string;
+}): Promise<void> => {
+  if (!input.body.trim()) throw new AppError('VALIDATION_ERROR', 'Write an answer before posting.');
+  if (isRealSession()) return sbPostAnswer(input);
+
   await delay(300);
-  if (!input.body.trim()) throw new AppError('VALIDATION_ERROR', "Write an answer before posting.");
   const doubts = loadDoubts();
   const doubt = doubts.find((d) => d.id === input.doubtId);
   if (!doubt) throw new AppError('NOT_FOUND', "This doubt doesn't exist anymore.");
@@ -245,11 +430,11 @@ export const postAnswer = async (input: {
 
   doubt.answerCount += 1;
   saveDoubts(doubts);
-  return answer;
 };
 
-/** Toggle a helpful vote; one vote per user per answer (answer_votes PK). */
-export const toggleHelpful = async (answerId: string, userId: string): Promise<DoubtAnswer> => {
+export const toggleHelpful = async (answerId: string, userId: string): Promise<void> => {
+  if (isRealSession()) return sbToggleHelpful(answerId, userId);
+
   await delay(150);
   const answers = loadAnswers();
   const answer = answers.find((a) => a.id === answerId);
@@ -262,11 +447,11 @@ export const toggleHelpful = async (answerId: string, userId: string): Promise<D
     answer.helpfulCount += 1;
   }
   saveAnswers(answers);
-  return answer;
 };
 
-/** Only the doubt's author may resolve it — enforced by RLS in Phase 1 too. */
-export const markResolved = async (doubtId: string, userId: string): Promise<Doubt> => {
+export const markResolved = async (doubtId: string, userId: string): Promise<void> => {
+  if (isRealSession()) return sbMarkResolved(doubtId, userId);
+
   await delay(150);
   const doubts = loadDoubts();
   const doubt = doubts.find((d) => d.id === doubtId);
@@ -275,5 +460,4 @@ export const markResolved = async (doubtId: string, userId: string): Promise<Dou
     throw new AppError('PERMISSION_DENIED', 'Only the asker can mark this resolved.');
   doubt.isResolved = true;
   saveDoubts(doubts);
-  return doubt;
 };

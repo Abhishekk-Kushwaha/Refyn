@@ -2,13 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Input } from '@/components/ui';
+import { useToast } from '@/components/feedback';
+import { isSupabaseConfigured } from '@/services/supabase/client';
+import { getErrorMessage } from '@/lib/errors';
 import { motion } from 'framer-motion';
 
 export const LoginView = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const login = useAuthStore((state) => state.login);
+  const [linkSent, setLinkSent] = useState(false);
+  const sendMagicLink = useAuthStore((state) => state.sendMagicLink);
   const skipAuth = useAuthStore((state) => state.skipAuth);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -17,8 +22,10 @@ export const LoginView = () => {
 
     setLoading(true);
     try {
-      await login(email);
-      navigate('/onboarding');
+      await sendMagicLink(email.trim());
+      setLinkSent(true);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -51,59 +58,66 @@ export const LoginView = () => {
         </motion.div>
 
         {/* Card */}
-        <motion.form
-          onSubmit={handleLogin}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="bg-surface rounded-lg p-8 shadow-lg space-y-6"
-        >
-          <div>
-            <h2 className="text-2xl font-semibold text-text-primary mb-2">Welcome Back</h2>
-            <p className="text-text-muted text-sm">Sign in to continue to your dashboard</p>
-          </div>
-
-          <Input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            label="Email"
-          />
-
-          <Button
-            type="submit"
-            fullWidth
-            loading={loading}
-            size="lg"
+        {linkSent ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-surface rounded-lg p-8 shadow-lg text-center space-y-4"
           >
-            Continue with Email
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-surface text-text-muted">Or</span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="secondary"
-            fullWidth
-            size="lg"
-            disabled={loading}
+            <div className="text-4xl">📬</div>
+            <h2 className="text-xl font-semibold text-text-primary">Check your email</h2>
+            <p className="text-text-muted text-sm">
+              We sent a sign-in link to <span className="text-text-primary font-medium">{email}</span>.
+              Open it on this device and you'll land straight in your dashboard.
+            </p>
+            <button
+              onClick={() => setLinkSent(false)}
+              className="text-sm text-accent hover:text-accent-hover transition-colors"
+            >
+              Use a different email
+            </button>
+          </motion.div>
+        ) : (
+          <motion.form
+            onSubmit={handleLogin}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-surface rounded-lg p-8 shadow-lg space-y-6"
           >
-            🔵 Sign in with Google
-          </Button>
+            <div>
+              <h2 className="text-2xl font-semibold text-text-primary mb-2">Welcome</h2>
+              <p className="text-text-muted text-sm">
+                Enter your email — we'll send you a magic sign-in link. No password needed.
+              </p>
+            </div>
 
-          <p className="text-center text-xs text-text-muted">
-            No account? <span className="text-accent cursor-pointer hover:text-accent-hover">Sign up</span>
-          </p>
-        </motion.form>
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading || !isSupabaseConfigured}
+              label="Email"
+            />
+
+            <Button
+              type="submit"
+              fullWidth
+              loading={loading}
+              size="lg"
+              disabled={!isSupabaseConfigured || !email.trim()}
+            >
+              Send Magic Link
+            </Button>
+
+            {!isSupabaseConfigured && (
+              <p className="text-xs text-danger text-center">
+                Supabase keys missing — real sign-in is disabled in this build.
+              </p>
+            )}
+          </motion.form>
+        )}
 
         {/* Explore without auth (demo mode) */}
         <motion.button
@@ -117,14 +131,13 @@ export const LoginView = () => {
           Skip for now — explore the app →
         </motion.button>
 
-        {/* Footer */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-center mt-6 text-xs text-text-muted space-y-1"
+          className="text-center mt-6 text-xs text-text-muted"
         >
-          <p>🚀 Demo mode — no account needed</p>
+          <p>Demo mode keeps everything on this device. Sign in to sync for real.</p>
         </motion.div>
       </motion.div>
     </div>

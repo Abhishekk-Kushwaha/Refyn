@@ -20,7 +20,14 @@
       "Bash(npm install *)",
       "Bash(npx vitest *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
-      "Bash(cd /d D:\\\\Refyn)"
+      "Bash(cd /d D:\\\\Refyn)",
+      "Bash(git rm *)",
+      "Bash(rm -f tsconfig.node.tsbuildinfo tsconfig.tsbuildinfo vite.config.d.ts vite.config.js)",
+      "Bash(git commit -q -m 'Remove tsc build artifacts from repo and gitignore them *)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" \"https://nxykkxqfipvzvlwpyszl.supabase.co/rest/v1/exams?select=*&limit=3\" -H \"apikey: sb_publishable__iizeblztYxpOrT3MkWMsw_yS1NZ4IP\" -H \"Authorization: Bearer sb_publishable__iizeblztYxpOrT3MkWMsw_yS1NZ4IP\")",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" \"https://nxykkxqfipvzvlwpyszl.supabase.co/rest/v1/subtopics?select=subtopic_id,name&limit=3\" -H \"apikey: sb_publishable__iizeblztYxpOrT3MkWMsw_yS1NZ4IP\")",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" \"https://nxykkxqfipvzvlwpyszl.supabase.co/rest/v1/topics?select=name&limit=3\" -H \"apikey: sb_publishable__iizeblztYxpOrT3MkWMsw_yS1NZ4IP\")",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" \"https://nxykkxqfipvzvlwpyszl.supabase.co/rest/v1/definitely_not_a_table?limit=1\" -H \"apikey: sb_publishable__iizeblztYxpOrT3MkWMsw_yS1NZ4IP\")"
     ]
   }
 }
