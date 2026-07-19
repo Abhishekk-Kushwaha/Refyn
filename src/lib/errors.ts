@@ -26,9 +26,20 @@ export const getErrorMessage = (error: unknown): string => {
   if (isAppError(error)) {
     return error.userMessage;
   }
-  if (error instanceof Error) {
+  if (error instanceof Error && error.message) {
     return error.message;
   }
+  // Supabase/PostgREST errors are plain objects, not Error instances, and their
+  // text can sit under any of several keys — without this they stringify to "{}"
+  // and the real failure never reaches the user.
+  if (error && typeof error === 'object') {
+    const e = error as Record<string, unknown>;
+    for (const key of ['message', 'msg', 'error_description', 'error', 'details', 'hint']) {
+      const value = e[key];
+      if (typeof value === 'string' && value.trim()) return value;
+    }
+  }
+  if (typeof error === 'string' && error.trim()) return error;
   return 'Something went wrong';
 };
 

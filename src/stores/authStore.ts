@@ -61,11 +61,24 @@ const hasDemoFlag = (): boolean => {
 export const useAuthStore = create<AuthStore>((set, get) => {
   /** Load the profile row for a signed-in user and hydrate session state. */
   const loadProfile = async (userId: string, email: string | undefined) => {
-    const { data: profile } = await getSupabase()
+    const supabase = getSupabase();
+    let { data: profile } = await supabase
       .from('profiles')
       .select('display_name, onboarding_complete')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
+
+    // Self-heal: the row is normally created by the on_auth_user_created
+    // trigger, but a user who signed up while that trigger was broken would
+    // otherwise have no profile — and no way to ever persist onboarding.
+    if (!profile) {
+      const { data: created } = await supabase
+        .from('profiles')
+        .insert({ id: userId, display_name: email?.split('@')[0] ?? 'Student' })
+        .select('display_name, onboarding_complete')
+        .maybeSingle();
+      profile = created ?? null;
+    }
 
     set({
       session: {
@@ -201,13 +214,16 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       // Real accounts persist onboarding to profiles + user_exams (Database §3).
       if (session && !isDemo && isSupabaseConfigured) {
         const supabase = getSupabase();
-        await supabase
-          .from('profiles')
-          .update({
+        // Upsert, not update: an update would silently affect zero rows if the
+        // profile were missing, stranding the user in onboarding forever.
+        await supabase.from('profiles').upsert(
+          {
+            id: session.user.id,
             onboarding_complete: true,
             display_name: session.user.displayName ?? null,
-          })
-          .eq('id', session.user.id);
+          },
+          { onConflict: 'id' }
+        );
 
         try {
           const examUuid = await getExamUuid(onboarding.selectedExamId ?? 'cat');
