@@ -11,19 +11,40 @@ export const LoginView = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [linkSent, setLinkSent] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const sendMagicLink = useAuthStore((state) => state.sendMagicLink);
+  const verifyOtp = useAuthStore((state) => state.verifyOtp);
   const skipAuth = useAuthStore((state) => state.skipAuth);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
     setLoading(true);
     try {
       await sendMagicLink(email.trim());
-      setLinkSent(true);
+      setOtpSent(true);
+      toast.success('Code sent to your email!');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp.trim() || otp.length !== 6) {
+      toast.error('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifyOtp(email.trim(), otp.trim());
+      navigate('/dashboard');
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -58,28 +79,48 @@ export const LoginView = () => {
         </motion.div>
 
         {/* Card */}
-        {linkSent ? (
-          <motion.div
+        {otpSent ? (
+          <motion.form
+            onSubmit={handleVerifyOtp}
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-lg p-8 shadow-lg text-center space-y-4"
+            className="bg-surface rounded-lg p-8 shadow-lg space-y-6"
           >
-            <div className="text-4xl">📬</div>
-            <h2 className="text-xl font-semibold text-text-primary">Check your email</h2>
-            <p className="text-text-muted text-sm">
-              We sent a sign-in link to <span className="text-text-primary font-medium">{email}</span>.
-              Open it on this device and you'll land straight in your dashboard.
-            </p>
+            <div>
+              <h2 className="text-2xl font-semibold text-text-primary mb-2">Enter verification code</h2>
+              <p className="text-text-muted text-sm">
+                We sent a 6-digit code to <span className="font-medium">{email}</span>. Check your inbox (and spam folder).
+              </p>
+            </div>
+
+            <Input
+              type="text"
+              placeholder="000000"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              disabled={loading}
+              label="Verification Code"
+              maxLength={6}
+            />
+
+            <Button type="submit" fullWidth loading={loading} size="lg" disabled={otp.length !== 6}>
+              Verify & Sign In
+            </Button>
+
             <button
-              onClick={() => setLinkSent(false)}
-              className="text-sm text-accent hover:text-accent-hover transition-colors"
+              type="button"
+              onClick={() => {
+                setOtpSent(false);
+                setOtp('');
+              }}
+              className="w-full text-sm text-accent hover:text-accent-hover transition-colors"
             >
               Use a different email
             </button>
-          </motion.div>
+          </motion.form>
         ) : (
           <motion.form
-            onSubmit={handleLogin}
+            onSubmit={handleSendOtp}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -88,7 +129,7 @@ export const LoginView = () => {
             <div>
               <h2 className="text-2xl font-semibold text-text-primary mb-2">Welcome</h2>
               <p className="text-text-muted text-sm">
-                Enter your email — we'll send you a magic sign-in link. No password needed.
+                Enter your email — we'll send you a one-time code. No password needed.
               </p>
             </div>
 
@@ -108,7 +149,7 @@ export const LoginView = () => {
               size="lg"
               disabled={!isSupabaseConfigured || !email.trim()}
             >
-              Send Magic Link
+              Send Verification Code
             </Button>
 
             {!isSupabaseConfigured && (

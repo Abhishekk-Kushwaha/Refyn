@@ -25,18 +25,14 @@ ALTER TABLE answers ADD COLUMN IF NOT EXISTS author_name TEXT;
 ALTER TABLE answers ADD COLUMN IF NOT EXISTS author_credibility NUMERIC(5,2);
 
 -- Votes must be readable by all signed-in users so vote state renders.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE tablename = 'answer_votes' AND policyname = 'read votes'
-  ) THEN
-    CREATE POLICY "read votes" ON answer_votes
-      FOR SELECT USING (auth.role() = 'authenticated');
-  END IF;
-END $$;
+DROP POLICY IF EXISTS "read votes" ON answer_votes;
+CREATE POLICY "read votes" ON answer_votes
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- helpful_count is maintained server-side (no UPDATE policy on answers).
+DROP TRIGGER IF EXISTS answer_votes_count ON answer_votes;
+DROP FUNCTION IF EXISTS sync_helpful_count();
+
 CREATE OR REPLACE FUNCTION sync_helpful_count()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -51,7 +47,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS answer_votes_count ON answer_votes;
 CREATE TRIGGER answer_votes_count
   AFTER INSERT OR DELETE ON answer_votes
   FOR EACH ROW EXECUTE FUNCTION sync_helpful_count();
@@ -154,7 +149,7 @@ SELECT (SELECT id FROM exams WHERE slug='cat'), s.id, 'CAT_MOCK_QA_10',
 FROM subtopics s WHERE s.concept_code = 'MOD_LINEAR'
 ON CONFLICT (exam_id, external_id) DO NOTHING;
 
--- ---------- 4. VERIFIED REPLICAS (hand-authored, Gemini slots in later) ----------
+-- ---------- 4. VERIFIED REPLICAS (hand-authored) ----------
 
 INSERT INTO replica_questions (parent_question_id, subtopic_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, solution, difficulty, status, generated_by)
 SELECT q.id, q.subtopic_id,
@@ -164,7 +159,8 @@ SELECT q.id, q.subtopic_id,
   4, 'verified', 'hand_authored'
 FROM questions q
 WHERE q.external_id = 'CAT_MOCK_QA_01' AND q.exam_id = (SELECT id FROM exams WHERE slug='cat')
-  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id);
+  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO replica_questions (parent_question_id, subtopic_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, solution, difficulty, status, generated_by)
 SELECT q.id, q.subtopic_id,
@@ -174,7 +170,8 @@ SELECT q.id, q.subtopic_id,
   5, 'verified', 'hand_authored'
 FROM questions q
 WHERE q.external_id = 'CAT_MOCK_QA_02' AND q.exam_id = (SELECT id FROM exams WHERE slug='cat')
-  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id);
+  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO replica_questions (parent_question_id, subtopic_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, solution, difficulty, status, generated_by)
 SELECT q.id, q.subtopic_id,
@@ -184,7 +181,8 @@ SELECT q.id, q.subtopic_id,
   6, 'verified', 'hand_authored'
 FROM questions q
 WHERE q.external_id = 'CAT_MOCK_QA_03' AND q.exam_id = (SELECT id FROM exams WHERE slug='cat')
-  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id);
+  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO replica_questions (parent_question_id, subtopic_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, solution, difficulty, status, generated_by)
 SELECT q.id, q.subtopic_id,
@@ -194,7 +192,8 @@ SELECT q.id, q.subtopic_id,
   6, 'verified', 'hand_authored'
 FROM questions q
 WHERE q.external_id = 'CAT_MOCK_QA_04' AND q.exam_id = (SELECT id FROM exams WHERE slug='cat')
-  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id);
+  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO replica_questions (parent_question_id, subtopic_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, solution, difficulty, status, generated_by)
 SELECT q.id, q.subtopic_id,
@@ -204,7 +203,8 @@ SELECT q.id, q.subtopic_id,
   5, 'verified', 'hand_authored'
 FROM questions q
 WHERE q.external_id = 'CAT_MOCK_QA_05' AND q.exam_id = (SELECT id FROM exams WHERE slug='cat')
-  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id);
+  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO replica_questions (parent_question_id, subtopic_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, solution, difficulty, status, generated_by)
 SELECT q.id, q.subtopic_id,
@@ -214,7 +214,8 @@ SELECT q.id, q.subtopic_id,
   5, 'verified', 'hand_authored'
 FROM questions q
 WHERE q.external_id = 'CAT_MOCK_QA_06' AND q.exam_id = (SELECT id FROM exams WHERE slug='cat')
-  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id);
+  AND NOT EXISTS (SELECT 1 FROM replica_questions r WHERE r.parent_question_id = q.id LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 -- ---------- 5. FLASHCARDS ----------
 
@@ -222,66 +223,70 @@ INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, diff
 SELECT s.id, 'Markup m% then discount d% — net effect?', 'Net % = m − d − (m×d)/100',
   'Mark 40%, discount 25%: 40 − 25 − 10 = 5% profit. One line, no CP assumption needed.', 'medium'
 FROM subtopics s WHERE s.concept_code = 'PL_CP_SP'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Markup m% then discount d% — net effect?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Markup m% then discount d% — net effect?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'Two trains crossing in opposite directions — time?', 't = (L₁ + L₂) / (v₁ + v₂)',
   'Add both lengths, add both speeds (opposite directions). Convert km/h → m/s by × 5/18 first.', 'medium'
 FROM subtopics s WHERE s.concept_code = 'TSD_RELATIVE'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Two trains crossing in opposite directions — time?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Two trains crossing in opposite directions — time?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'A and B together, then A leaves — how to split the work?', 'Work done = t × (1/a + 1/b); remaining ÷ B''s rate',
   'Compute the joint fraction finished, subtract from 1, divide the remainder by the stayer''s rate.', 'medium'
 FROM subtopics s WHERE s.concept_code = 'TW_COMBINED'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'A and B together, then A leaves — how to split the work?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'A and B together, then A leaves — how to split the work?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'Roots in ratio p:q for x² − Sx + P = 0 — fastest path?', 'Roots pk, qk → (p+q)k = S; P = pq·k²',
   'Let the roots be pk and qk. Sum pins k instantly; product gives the constant term.', 'medium'
 FROM subtopics s WHERE s.concept_code = 'ALG_QUAD_ROOT'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Roots in ratio p:q for x² − Sx + P = 0 — fastest path?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Roots in ratio p:q for x² − Sx + P = 0 — fastest path?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'Age ratio then vs now — setup?', '(ak + t)/(bk + t) = new ratio',
   'Old ages ak, bk; add the elapsed years to BOTH before equating to the new ratio. Cross-multiply, solve k.', 'easy'
 FROM subtopics s WHERE s.concept_code = 'RATIO_BASIC'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Age ratio then vs now — setup?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Age ratio then vs now — setup?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'Altitude to the hypotenuse of a right triangle?', 'h = (leg₁ × leg₂) / hypotenuse',
   'Both expressions for area: ½·leg₁·leg₂ = ½·hyp·h. Equate and solve — no trig needed.', 'easy'
 FROM subtopics s WHERE s.concept_code = 'GEO_TRI_BASIC'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Altitude to the hypotenuse of a right triangle?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Altitude to the hypotenuse of a right triangle?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'Spotting the CI rate from amount ratio?', 'A/P = (1 + r)ⁿ — look for perfect nth powers',
   '9261/8000 = (21/20)³ → r = 1/20 = 5%. CAT amounts are usually built from clean powers.', 'medium'
 FROM subtopics s WHERE s.concept_code = 'CI_ANNUAL'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Spotting the CI rate from amount ratio?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Spotting the CI rate from amount ratio?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'Last-two-digits / mod 100 of aᵇ?', 'Find the cycle of aⁿ mod 100',
   '7ⁿ mod 100 cycles 07, 49, 43, 01 every 4. Reduce the exponent mod 4 and read off.', 'hard'
 FROM subtopics s WHERE s.concept_code = 'NS_REMAINDER'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Last-two-digits / mod 100 of aᵇ?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Last-two-digits / mod 100 of aᵇ?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'One person replaced, average shifts by x?', 'New weight = old weight + n·x',
   'The whole shift times group size lands on the swapped person. 8 people, +2.5 → new = old + 20.', 'easy'
 FROM subtopics s WHERE s.concept_code = 'MIX_ALLIGATION'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'One person replaced, average shifts by x?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'One person replaced, average shifts by x?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
 INSERT INTO flashcards (subtopic_id, front, back_formula, back_explanation, difficulty)
 SELECT s.id, 'Arrangements with vowels together?', '(n−v+1)! × v!',
   'Glue the vowels into one block, arrange the blocks, then arrange inside the block. MOBILE: 4!×3! = 144.', 'medium'
 FROM subtopics s WHERE s.concept_code = 'MOD_LINEAR'
-  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Arrangements with vowels together?');
+  AND NOT EXISTS (SELECT 1 FROM flashcards f WHERE f.subtopic_id = s.id AND f.front = 'Arrangements with vowels together?' LIMIT 1)
+ON CONFLICT DO NOTHING;
 
--- ============================================================
--- Sanity checks (run these after; expected counts in comments)
--- ============================================================
--- SELECT count(*) FROM questions;          -- 10
--- SELECT count(*) FROM replica_questions;  -- 6, all status='verified'
--- SELECT count(*) FROM flashcards;         -- 10
--- ============================================================
+-- Done. Seed is now idempotent and Supabase-compatible.

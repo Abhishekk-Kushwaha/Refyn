@@ -16,6 +16,7 @@ interface AuthStore {
   onboarding: OnboardingState;
   initialize: () => Promise<void>;
   sendMagicLink: (email: string) => Promise<void>;
+  verifyOtp: (email: string, token: string) => Promise<void>;
   skipAuth: () => void;
   logout: () => Promise<void>;
   updateOnboarding: (updates: Partial<OnboardingState>) => void;
@@ -125,9 +126,16 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     },
 
     sendMagicLink: async (email: string) => {
-      const { error } = await getSupabase().auth.signInWithOtp({
+      // OTP mode: sends a 6-digit code to email
+      const { error } = await getSupabase().auth.signInWithOtp({ email });
+      if (error) throw error;
+    },
+
+    verifyOtp: async (email: string, token: string) => {
+      const { error } = await getSupabase().auth.verifyOtp({
         email,
-        options: { emailRedirectTo: window.location.origin },
+        token,
+        type: 'email',
       });
       if (error) throw error;
     },
