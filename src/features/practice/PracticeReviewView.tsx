@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui';
@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/feedback';
 import { useSessionStore } from '@/stores/sessionStore';
 import { persistSession, AttemptRecord } from '@/services/sessions.service';
 import { aweEngine } from '@/engine/engine';
+import { SolutionCard } from './components/SolutionCard';
 
 interface TopicBreakdown {
   topicName: string;
@@ -20,6 +21,7 @@ export const PracticeReviewView = () => {
   // sees the guard immediately — a state-based guard updates only after the async
   // saveSession() resolves, so both invocations would race past it and double-save.
   const hasSavedRef = useRef(false);
+  const [solutionFilter, setSolutionFilter] = useState<'all' | 'mistakes'>('all');
 
   const stats = useMemo(() => {
     const total = questions.length;
@@ -45,6 +47,21 @@ export const PracticeReviewView = () => {
       topics: Array.from(byTopic.values()),
     };
   }, [questions, answers]);
+
+  // Keep the original question order (index = the number shown during the quiz)
+  // so filtering to mistakes doesn't renumber the cards.
+  const solutionRows = useMemo(
+    () => questions.map((question, index) => ({ question, index })),
+    [questions]
+  );
+  const mistakeCount = useMemo(
+    () => questions.filter((q) => !answers[q.id]?.isCorrect).length,
+    [questions, answers]
+  );
+  const visibleSolutions =
+    solutionFilter === 'all'
+      ? solutionRows
+      : solutionRows.filter(({ question }) => !answers[question.id]?.isCorrect);
 
   useEffect(() => {
     if (stats.total === 0 || hasSavedRef.current) return;
@@ -217,6 +234,49 @@ export const PracticeReviewView = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* Solutions — per-question review of what was right, wrong or skipped */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-text-muted text-xs font-semibold tracking-widest uppercase">
+              Solutions
+            </h4>
+            <div className="flex bg-surface rounded-md p-0.5">
+              {(['all', 'mistakes'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setSolutionFilter(filter)}
+                  className={`text-xs px-3 py-1 rounded transition-colors ${
+                    solutionFilter === filter
+                      ? 'bg-accent text-accent-text font-semibold'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  {filter === 'all' ? `All (${stats.total})` : `Mistakes (${mistakeCount})`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {visibleSolutions.length === 0 ? (
+            <div className="bg-surface rounded-lg p-6 text-center text-sm text-text-muted">
+              No mistakes in this session — clean sweep. 🎯
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visibleSolutions.map(({ question, index }) => (
+                <motion.div
+                  key={question.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <SolutionCard question={question} answer={answers[question.id]} index={index} />
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
