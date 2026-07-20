@@ -22,8 +22,8 @@ interface AuthStore {
   isDemo: boolean;
   onboarding: OnboardingState;
   initialize: () => Promise<void>;
-  sendMagicLink: (email: string) => Promise<void>;
-  verifyOtp: (email: string, token: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
   skipAuth: () => void;
   logout: () => Promise<void>;
   updateOnboarding: (updates: Partial<OnboardingState>) => void;
@@ -163,21 +163,23 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       set({ status: 'ready' });
     },
 
-    sendMagicLink: async (email: string) => {
-      // OTP mode: sends a 6-digit code to email
-      const { error } = await getSupabase().auth.signInWithOtp({ email });
-      if (error) throw error;
-    },
-
-    verifyOtp: async (email: string, token: string) => {
-      const { data, error } = await getSupabase().auth.verifyOtp({
+    login: async (email: string, password: string) => {
+      const { data, error } = await getSupabase().auth.signInWithPassword({
         email,
-        token,
-        type: 'email',
+        password,
       });
       if (error) throw error;
-      // Hydrate profile + engine before returning so the dashboard renders with
-      // this user's real weakness data already loaded (no empty-then-populate flash).
+      if (data.user) {
+        await loadProfile(data.user.id, data.user.email);
+      }
+    },
+
+    signup: async (email: string, password: string) => {
+      const { data, error } = await getSupabase().auth.signUp({
+        email,
+        password,
+      });
+      if (error) throw error;
       if (data.user) {
         await loadProfile(data.user.id, data.user.email);
       }

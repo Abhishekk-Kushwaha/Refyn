@@ -11,39 +11,26 @@ export const LoginView = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const sendMagicLink = useAuthStore((state) => state.sendMagicLink);
-  const verifyOtp = useAuthStore((state) => state.verifyOtp);
+  const login = useAuthStore((state) => state.login);
+  const signup = useAuthStore((state) => state.signup);
   const skipAuth = useAuthStore((state) => state.skipAuth);
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password.trim()) return;
 
     setLoading(true);
     try {
-      await sendMagicLink(email.trim());
-      setOtpSent(true);
-      toast.success('Code sent to your email!');
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp.trim() || otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await verifyOtp(email.trim(), otp.trim());
+      if (isSignup) {
+        await signup(email.trim(), password.trim());
+        toast.success('Account created! Signing in...');
+      } else {
+        await login(email.trim(), password.trim());
+        toast.success('Signed in successfully!');
+      }
       navigate('/dashboard');
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -79,86 +66,68 @@ export const LoginView = () => {
         </motion.div>
 
         {/* Card */}
-        {otpSent ? (
-          <motion.form
-            onSubmit={handleVerifyOtp}
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-lg p-8 shadow-lg space-y-6"
+        <motion.form
+          onSubmit={handleSubmit}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-surface rounded-lg p-8 shadow-lg space-y-6"
+        >
+          <div>
+            <h2 className="text-2xl font-semibold text-text-primary mb-2">
+              {isSignup ? 'Create Account' : 'Welcome Back'}
+            </h2>
+            <p className="text-text-muted text-sm">
+              {isSignup
+                ? 'Sign up to start hunting your weak spots'
+                : 'Sign in to continue your learning journey'}
+            </p>
+          </div>
+
+          <Input
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading || !isSupabaseConfigured}
+            label="Email"
+          />
+
+          <Input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading || !isSupabaseConfigured}
+            label="Password"
+          />
+
+          <Button
+            type="submit"
+            fullWidth
+            loading={loading}
+            size="lg"
+            disabled={!isSupabaseConfigured || !email.trim() || !password.trim()}
           >
-            <div>
-              <h2 className="text-2xl font-semibold text-text-primary mb-2">Enter verification code</h2>
-              <p className="text-text-muted text-sm">
-                We sent a 6-digit code to <span className="font-medium">{email}</span>. Check your inbox (and spam folder).
-              </p>
-            </div>
+            {isSignup ? 'Create Account' : 'Sign In'}
+          </Button>
 
-            <Input
-              type="text"
-              placeholder="000000"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              disabled={loading}
-              label="Verification Code"
-              maxLength={6}
-            />
-
-            <Button type="submit" fullWidth loading={loading} size="lg" disabled={otp.length !== 6}>
-              Verify & Sign In
-            </Button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setOtpSent(false);
-                setOtp('');
-              }}
-              className="w-full text-sm text-accent hover:text-accent-hover transition-colors"
-            >
-              Use a different email
-            </button>
-          </motion.form>
-        ) : (
-          <motion.form
-            onSubmit={handleSendOtp}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-surface rounded-lg p-8 shadow-lg space-y-6"
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignup(!isSignup);
+              setPassword('');
+            }}
+            className="w-full text-sm text-accent hover:text-accent-hover transition-colors"
           >
-            <div>
-              <h2 className="text-2xl font-semibold text-text-primary mb-2">Welcome</h2>
-              <p className="text-text-muted text-sm">
-                Enter your email — we'll send you a one-time code. No password needed.
-              </p>
-            </div>
+            {isSignup ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+          </button>
 
-            <Input
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading || !isSupabaseConfigured}
-              label="Email"
-            />
-
-            <Button
-              type="submit"
-              fullWidth
-              loading={loading}
-              size="lg"
-              disabled={!isSupabaseConfigured || !email.trim()}
-            >
-              Send Verification Code
-            </Button>
-
-            {!isSupabaseConfigured && (
-              <p className="text-xs text-danger text-center">
-                Supabase keys missing — real sign-in is disabled in this build.
-              </p>
-            )}
-          </motion.form>
-        )}
+          {!isSupabaseConfigured && (
+            <p className="text-xs text-danger text-center">
+              Supabase keys missing — real sign-in is disabled in this build.
+            </p>
+          )}
+        </motion.form>
 
         {/* Explore without auth (demo mode) */}
         <motion.button
