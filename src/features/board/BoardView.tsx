@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Button, SkeletonCard } from '@/components/ui';
+import { Button, SkeletonCard, Display } from '@/components/ui';
 import { EmptyState, ErrorState } from '@/components/feedback';
 import { getDoubts, BoardFilter } from '@/services/doubts.service';
 import { useAuthStore } from '@/stores/authStore';
@@ -31,26 +31,30 @@ export const BoardView = () => {
 
   return (
     <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Doubt Board</h1>
-          <p className="text-text-muted text-sm">Ask peers. Credibility comes from real quiz data.</p>
+          <Display as="h1" size="md">
+            Doubt Board
+          </Display>
+          <p className="mt-2 font-body text-sm text-text-secondary">
+            Ask peers. Credibility comes from real quiz data.
+          </p>
         </div>
         <Button size="sm" onClick={() => navigate('/board/new')}>
-          + Ask
+          Ask
         </Button>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 mb-5 bg-surface rounded-lg p-1">
+      <div className="mb-6 flex gap-1 rounded-lg bg-surface p-1">
         {filters.map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={clsx(
-              'flex-1 py-2 rounded-md text-sm font-medium transition-colors',
+              'flex-1 rounded-md py-2 font-body text-sm font-medium transition-colors',
               filter === f.id
-                ? 'bg-accent-subtle text-accent'
+                ? 'bg-accent text-accent-text'
                 : 'text-text-muted hover:text-text-primary'
             )}
           >

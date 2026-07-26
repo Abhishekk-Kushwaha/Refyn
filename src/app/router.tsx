@@ -16,6 +16,9 @@ const NewDoubtView = lazy(() => import('@/features/board/NewDoubtView').then((m)
 const DoubtThreadView = lazy(() => import('@/features/board/DoubtThreadView').then((m) => ({ default: m.DoubtThreadView })));
 const ProfileView = lazy(() => import('@/features/profile/ProfileView').then((m) => ({ default: m.ProfileView })));
 const AppLayout = lazy(() => import('@/components/layout/AppLayout').then((m) => ({ default: m.AppLayout })));
+// Design-system reference page. Public on purpose so the kit can be reviewed
+// without a session. Delete this line + its route once the screens are restyled.
+const DesignSystemView = lazy(() => import('@/features/design/DesignSystemView').then((m) => ({ default: m.DesignSystemView })));
 
 // Lazy load wrapper
 const LazyComponent = ({ component: Component }: { component: ReactNode }) => (
@@ -62,6 +65,10 @@ const publicRoutes = [
   {
     path: '/login',
     element: <LazyComponent component={<LoginView />} />,
+  },
+  {
+    path: '/design',
+    element: <LazyComponent component={<DesignSystemView />} />,
   },
 ];
 

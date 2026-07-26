@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button, SkeletonCard } from '@/components/ui';
+import { SkeletonCard, Display, Eyebrow, StatBar, StatPill, ModeCard } from '@/components/ui';
 import { ErrorState, EmptyState, useToast } from '@/components/feedback';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
 import { useAuthStore } from '@/stores/authStore';
@@ -39,12 +39,37 @@ export const DashboardView = () => {
 
   return (
     <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
+      {/* Stat bar */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+        <StatBar>
+          <StatPill
+            icon="practice"
+            value={data?.totalAttempts ?? 0}
+            unit="attempted"
+            label="Questions attempted"
+          />
+          {data && data.totalAttempts > 0 && (
+            <StatPill
+              icon="trend"
+              value={Math.round(
+                (data.subtopics.reduce((sum, s) => sum + (s.accuracy * s.attempts), 0) /
+                  (data.subtopics.reduce((sum, s) => sum + s.attempts, 0) || 1))
+              )}
+              unit="%"
+              label="Overall accuracy"
+              tone="accent"
+            />
+          )}
+        </StatBar>
+      </motion.div>
+
       {/* Greeting */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <h1 className="text-2xl font-semibold text-text-primary">
-          Hey, {displayName} 👋
-        </h1>
-        <p className="text-text-muted">Let's hunt down your weak spots.</p>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+        <Eyebrow className="mb-2 text-accent">Hey {displayName}</Eyebrow>
+        <Display size="lg">Hunt your weakness</Display>
+        <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">
+          Complete a practice session to see ranked insights into your weak spots. We'll always show you what needs fixing next.
+        </p>
       </motion.div>
 
       {/* Loading */}
@@ -64,8 +89,8 @@ export const DashboardView = () => {
       {!isLoading && !error && data && data.totalAttempts === 0 && (
         <EmptyState
           icon="🎯"
-          title="No data yet"
-          description="Complete a practice session and your weakness profile will appear here — ranked, so you always know what to fix next."
+          title="Ready to begin?"
+          description="Your weakness profile appears after your first practice session. We'll rank your weak spots so you always know what to fix next."
           action={{ label: 'Start Practicing', onClick: () => navigate('/practice') }}
         />
       )}
@@ -73,24 +98,42 @@ export const DashboardView = () => {
       {/* Success */}
       {!isLoading && !error && data && data.totalAttempts > 0 && (
         <div className="space-y-8">
+          {/* Quick start cards */}
+          <section className="space-y-2">
+            <Eyebrow className="text-text-muted">Practice</Eyebrow>
+            <ModeCard
+              title="Weakness Hunt"
+              description="Pulls from your weakest subtopics and adapts as you go."
+              meta={['Adaptive', 'Ranked']}
+              tone="accent"
+              onClick={() => navigate('/practice')}
+            />
+          </section>
+
           {/* Radar */}
           <motion.section
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-lg p-4"
+            className="bg-surface rounded-xl border border-border p-5"
           >
-            <h4 className="text-text-muted text-xs font-semibold tracking-widest uppercase mb-2">
-              Weakness Map
-            </h4>
+            <div className="mb-3 flex items-baseline justify-between">
+              <Eyebrow className="text-text-muted">Weakness Map</Eyebrow>
+              <span className="font-body text-[0.6875rem] font-bold uppercase tracking-wider text-text-secondary">
+                {data.topics.length} sections
+              </span>
+            </div>
             <WeaknessRadar topics={data.topics} />
           </motion.section>
 
           {/* Ranked weak topics */}
           <section>
-            <h4 className="text-text-muted text-xs font-semibold tracking-widest uppercase mb-3">
-              Ranked by weakness
-            </h4>
-            <div className="space-y-3">
+            <div className="mb-3 flex items-baseline justify-between">
+              <Eyebrow className="text-text-muted">Ranked by weakness</Eyebrow>
+              <span className="font-body text-[0.6875rem] font-bold uppercase tracking-wider text-text-secondary">
+                {data.subtopics.length} subtopics
+              </span>
+            </div>
+            <div className="space-y-2">
               {data.subtopics.map((subtopic, i) => (
                 <WeakTopicCard
                   key={subtopic.subtopicId}
@@ -102,11 +145,6 @@ export const DashboardView = () => {
               ))}
             </div>
           </section>
-
-          {/* CTA */}
-          <Button size="lg" fullWidth onClick={() => navigate('/practice')}>
-            Start a Practice Session
-          </Button>
         </div>
       )}
     </div>

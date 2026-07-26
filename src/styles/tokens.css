@@ -30,8 +30,20 @@
   --green-400: #4ade80;
   --blue-500: #3b82f6;
 
-  /* Typography */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  /* Topic identity hues — identity ONLY, never used to signal state.
+     Chosen to stay distinct from --accent (amber), --danger, --success, --info. */
+  --violet-400: #a78bfa;
+  --cyan-400: #22d3ee;
+  --pink-400: #f472b6;
+  --lime-400: #a3e635;
+
+  /* Typography
+     --font-display : Anton, for large editorial headlines only (>=28px).
+                      Single weight (400). Never use below 20px — it turns to mush.
+     --font-heading : Space Grotesk, for mid-level UI headings and card titles.
+     --font-body    : Inter, for everything you actually read. */
+  --font-display: 'Anton', 'Space Grotesk', system-ui, sans-serif;
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -63,6 +75,12 @@
 
   --skeleton: var(--zinc-800);
   --overlay: rgba(0, 0, 0, 0.7);
+
+  /* Topic identity */
+  --topic-a: var(--violet-400);
+  --topic-b: var(--cyan-400);
+  --topic-c: var(--pink-400);
+  --topic-d: var(--lime-400);
 }
 
 /* LIGHT THEME */
@@ -91,6 +109,12 @@
 
   --skeleton: var(--zinc-200);
   --overlay: rgba(0, 0, 0, 0.35);
+
+  /* Topic identity — darkened so they hold contrast on a white surface */
+  --topic-a: #7c3aed;
+  --topic-b: #0891b2;
+  --topic-c: #db2777;
+  --topic-d: #65a30d;
 }
 
 /* Smooth transitions when theme changes */

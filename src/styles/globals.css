@@ -18,27 +18,36 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  /* h1/h2 are the editorial tier — Anton.
+     Anton ships a single weight (400). Asking for 600/700 makes the browser
+     synthesize a fake bold, which smears the stems. Always pin it to 400. */
+  h1, h2 {
     font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
   }
 
   h1 {
-    font-size: 2.25rem;
-    line-height: 2.5rem;
-    font-weight: 700;
-    letter-spacing: -0.025em;
+    font-size: 2.75rem;
+    line-height: 0.95;
   }
 
   h2 {
-    font-size: 1.875rem;
-    line-height: 2.25rem;
-    font-weight: 600;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  /* h3-h6 are the UI tier — Space Grotesk, which has real weights. */
+  h3, h4, h5, h6 {
+    font-family: var(--font-heading);
   }
 
   h3 {
     font-size: 1.5rem;
     line-height: 2rem;
     font-weight: 600;
+    letter-spacing: -0.015em;
   }
 
   h4 {

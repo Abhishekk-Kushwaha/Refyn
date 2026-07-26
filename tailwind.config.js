@@ -24,9 +24,14 @@ export default {
         'info-subtle': 'var(--info-subtle)',
         skeleton: 'var(--skeleton)',
         overlay: 'var(--overlay)',
+        'topic-a': 'var(--topic-a)',
+        'topic-b': 'var(--topic-b)',
+        'topic-c': 'var(--topic-c)',
+        'topic-d': 'var(--topic-d)',
       },
       fontFamily: {
         display: 'var(--font-display)',
+        heading: 'var(--font-heading)',
         body: 'var(--font-body)',
         mono: 'var(--font-mono)',
       },
@@ -35,6 +40,8 @@ export default {
         sm: '8px',
         md: '12px',
         lg: '16px',
+        xl: '20px',
+        '2xl': '24px',
       },
       spacing: {
         xs: '4px',
