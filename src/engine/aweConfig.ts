@@ -76,6 +76,10 @@ export const AWE_CONFIG = {
   flashcard_max_interval_days: 180,
   flashcard_mastered_interval_days: 30,
   flashcard_daily_limit: 30,
+  // Cards to keep available per currently-weak concept. Materialising cards ONLY
+  // at the instant a concept flips meant weakness that predates the card bank —
+  // or predates a rule change — never got any cards at all.
+  flashcard_backfill_per_concept: 2,
   // The mastery nudge is absolute in BOTH directions. A multiplicative penalty
   // is smaller than an additive bonus at low scores, which made flip-flopping
   // on a weak concept quietly inflate its mastery.

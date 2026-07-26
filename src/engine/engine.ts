@@ -246,6 +246,44 @@ export class AweEngine {
   }
 
   /**
+   * Ensure every currently-weak concept actually has cards available.
+   *
+   * `queue_flashcards` only fires at the moment a concept *changes* state, so a
+   * concept that was already weak got nothing: no cards if the card bank landed
+   * later, and none for low-weight topics whose weakness never triggered R001 at
+   * all. A student with eight weak Modern Maths concepts would see one card.
+   *
+   * Only creates state that is missing — existing cards keep their SM-2
+   * schedule, so this is idempotent and never tramples spacing.
+   */
+  backfillWeakConceptCards(now = new Date().toISOString()): number {
+    const pool = getFlashcardPool();
+    if (pool.length === 0) return 0;
+
+    const cards = this.store.getFlashcards();
+    const perConcept = this.config.flashcard_backfill_per_concept;
+    let created = 0;
+
+    const weak = Object.values(this.store.getMasteries())
+      .filter((m) => m.status === 'weak' || m.status === 'very_weak')
+      .sort((a, b) => b.priorityWeight - a.priorityWeight);
+
+    for (const concept of weak) {
+      const available = pool
+        .filter((c) => c.conceptId === concept.conceptId && !cards[c.id])
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .slice(0, perConcept);
+      for (const card of available) {
+        cards[card.id] = initFlashcardState(card.id, card.conceptId, now, this.config);
+        created += 1;
+      }
+    }
+
+    if (created > 0) this.store.saveFlashcards(cards);
+    return created;
+  }
+
+  /**
    * Remove SM-2 state for cards that are not in the current pool.
    *
    * Orphans (from a demo→account pool switch, or a re-seeded bank) were counted

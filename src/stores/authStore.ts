@@ -129,6 +129,9 @@ export const useAuthStore = create<AuthStore>((set, get) => {
   const runEngineHousekeeping = () => {
     try {
       aweEngine.pruneOrphanFlashcards();
+      // Not gated behind the daily tick: it only creates missing state, so it is
+      // safe to run on every load and makes new card content reachable at once.
+      aweEngine.backfillWeakConceptCards();
       aweEngine.dailyTick();
     } catch {
       // Housekeeping is best-effort; never block sign-in on it.

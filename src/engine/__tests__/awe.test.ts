@@ -493,6 +493,46 @@ describe('SM-2 flashcards (R010/R011)', () => {
     expect(engine.getDueFlashcards(NOW).length).toBeGreaterThan(0);
   });
 
+  it('backfills cards for concepts that are ALREADY weak, not just ones that just flipped', () => {
+    const store = new MemoryAweStore();
+    const engine = new AweEngine(store);
+
+    // Weakness that predates the card bank (or a rule change): the concept is
+    // weak, but no queue_flashcards action ever fired for it. This is the real
+    // shape of a low-weight topic like Modern Maths (topicWeight 0.45), which
+    // never met R001's high-value gate at all.
+    store.saveMasteries({
+      'sub-pl': makeMastery('sub-pl', { status: 'weak', attempts: 4, correct: 0, accuracy: 0, priorityWeight: 1.3 }),
+      'sub-tsd': makeMastery('sub-tsd', { status: 'very_weak', attempts: 5, correct: 1, accuracy: 20, priorityWeight: 1.2 }),
+      'sub-quad': makeMastery('sub-quad', { status: 'mastered', attempts: 20, correct: 19, accuracy: 95 }),
+    });
+    expect(engine.getDueFlashcards(NOW)).toHaveLength(0);
+
+    const created = engine.backfillWeakConceptCards(NOW);
+    expect(created).toBeGreaterThan(0);
+
+    const due = engine.getDueFlashcards(NOW).map((s) => s.conceptId);
+    expect(due).toContain('sub-pl');
+    expect(due).toContain('sub-tsd');
+    expect(due).not.toContain('sub-quad'); // mastered concepts stay retired
+  });
+
+  it('backfilling is idempotent and never resets an existing SM-2 schedule', () => {
+    const store = new MemoryAweStore();
+    const engine = new AweEngine(store);
+    store.saveMasteries({
+      'sub-pl': makeMastery('sub-pl', { status: 'weak', attempts: 4, correct: 0, accuracy: 0 }),
+    });
+
+    engine.backfillWeakConceptCards(NOW);
+    const cardId = Object.keys(store.getFlashcards())[0];
+    for (let i = 0; i < 5; i++) engine.reviewFlashcard(cardId, 'good', NOW);
+    const scheduled = store.getFlashcards()[cardId].nextReviewAt;
+
+    expect(engine.backfillWeakConceptCards(NOW)).toBe(0); // nothing new to create
+    expect(store.getFlashcards()[cardId].nextReviewAt).toBe(scheduled); // untouched
+  });
+
   it('prunes card state whose card no longer exists in the pool', () => {
     const store = new MemoryAweStore();
     const engine = new AweEngine(store);

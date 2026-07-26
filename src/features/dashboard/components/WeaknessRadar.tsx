@@ -8,11 +8,22 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useThemeStore } from '@/stores/themeStore';
-import { TopicWeakness } from '@/services/weakness.service';
+import { SubtopicWeakness, TopicWeakness } from '@/services/weakness.service';
 
 interface WeaknessRadarProps {
   topics: TopicWeakness[];
+  /**
+   * Axes to fall back to when the student's practice sits inside fewer than
+   * three parent topics. Drilling one topic deeply is normal — and it used to
+   * leave the radar permanently locked behind "practice at least 3 topics"
+   * while a dozen weak subtopics sat listed right underneath it.
+   */
+  subtopics?: SubtopicWeakness[];
 }
+
+/** A radar needs at least this many axes to read as an area rather than a line. */
+const MIN_AXES = 3;
+const MAX_AXES = 8;
 
 // Recharts can't read CSS classes for data colors, so resolve the semantic tokens
 // to concrete hex at render time (Theming doc §5). Re-resolve whenever the theme
@@ -33,22 +44,31 @@ const useTokenColors = () => {
   return colors;
 };
 
-export const WeaknessRadar = ({ topics }: WeaknessRadarProps) => {
+export const WeaknessRadar = ({ topics, subtopics = [] }: WeaknessRadarProps) => {
   const colors = useTokenColors();
 
   // One axis per tested topic — renders N axes dynamically, never a hardcoded
-  // shape (Architecture doc Rule 3). A radar needs ≥3 axes to read as an area.
-  const data = topics.map((t) => ({
-    topic: t.topicName,
-    score: t.weaknessScore,
-  }));
+  // shape (Architecture doc Rule 3).
+  const topicAxes = topics.map((t) => ({ topic: t.topicName, score: t.weaknessScore }));
 
-  if (data.length < 3) {
+  // Not enough parent topics to plot? Plot the subtopics instead. The data is
+  // there either way, and the whole point of the map is to show it.
+  const usingSubtopics = topicAxes.length < MIN_AXES && subtopics.length >= MIN_AXES;
+  const data = (
+    usingSubtopics
+      ? subtopics
+          .slice(0, MAX_AXES)
+          .map((s) => ({ topic: s.subtopicName, score: s.weaknessScore }))
+      : topicAxes.slice(0, MAX_AXES)
+  );
+
+  if (data.length < MIN_AXES) {
+    const touched = Math.max(topicAxes.length, subtopics.length);
     return (
       <div className="flex items-center justify-center h-64 text-center px-6">
         <p className="text-text-muted text-sm">
-          Practice at least 3 topics to unlock your weakness radar. So far you've
-          touched {data.length}.
+          Practice at least {MIN_AXES} concepts to unlock your weakness radar. So far
+          you've touched {touched}.
         </p>
       </div>
     );
@@ -56,6 +76,11 @@ export const WeaknessRadar = ({ topics }: WeaknessRadarProps) => {
 
   return (
     <div className="w-full h-72">
+      {usingSubtopics && (
+        <p className="text-text-muted text-xs text-center mb-1">
+          Showing concepts — practice more topics to compare sections
+        </p>
+      )}
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} outerRadius="72%">
           <PolarGrid stroke={colors.grid} />

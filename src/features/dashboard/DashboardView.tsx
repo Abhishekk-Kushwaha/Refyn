@@ -119,10 +119,12 @@ export const DashboardView = () => {
             <div className="mb-3 flex items-baseline justify-between">
               <Eyebrow className="text-text-muted">Weakness Map</Eyebrow>
               <span className="font-body text-[0.6875rem] font-bold uppercase tracking-wider text-text-secondary">
-                {data.topics.length} sections
+                {data.topics.length >= 3
+                  ? `${data.topics.length} sections`
+                  : `${data.subtopics.length} concepts`}
               </span>
             </div>
-            <WeaknessRadar topics={data.topics} />
+            <WeaknessRadar topics={data.topics} subtopics={data.subtopics} />
           </motion.section>
 
           {/* Ranked weak topics */}
