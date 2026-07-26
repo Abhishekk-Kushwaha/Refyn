@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { aweEngine } from '@/engine/engine';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Display } from '@/components/ui';
 import { useToast } from '@/components/feedback';
 import { motion } from 'framer-motion';
 
@@ -14,6 +16,19 @@ export const ProfileView = () => {
   const isDemo = useAuthStore((state) => state.isDemo);
   const { theme, setTheme } = useThemeStore();
   const { data: weaknessData, isLoading } = useWeaknessScores();
+
+  // yyyy-mm-dd for the native date input; the engine stores a full ISO string.
+  const [examDate, setExamDate] = useState<string | null>(
+    () => aweEngine.getExamDate()?.slice(0, 10) ?? null
+  );
+  const daysToExam = aweEngine.daysToExam();
+
+  const handleExamDateChange = (value: string) => {
+    const next = value ? new Date(`${value}T00:00:00`).toISOString() : null;
+    aweEngine.setExamDate(next);
+    setExamDate(value || null);
+    toast.success(value ? 'Exam date saved' : 'Exam date cleared');
+  };
 
   const handleLogout = async () => {
     try {
@@ -38,8 +53,12 @@ export const ProfileView = () => {
     <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <h1 className="text-2xl font-semibold text-text-primary">Profile</h1>
-        <p className="text-text-muted">Your stats, settings, and account info</p>
+        <Display as="h1" size="md">
+          Profile
+        </Display>
+        <p className="mt-2 font-body text-sm text-text-secondary">
+          Your stats, settings, and account info
+        </p>
       </motion.div>
 
       {/* Account Info */}
@@ -140,6 +159,29 @@ export const ProfileView = () => {
             <CardTitle>Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Exam date — this is what opens the pre-CAT revival window (R009).
+                Without it the engine records `everWasVeryWeak` forever and can
+                never act on it, because daysToExam is always null. */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-text-primary font-medium">Exam date</p>
+                <p className="text-sm text-text-muted">
+                  {examDate
+                    ? daysToExam !== null && daysToExam >= 0
+                      ? `${daysToExam} days to go — old weak spots revive in the last 30`
+                      : 'Date has passed'
+                    : 'Set it to revive old weak spots before the exam'}
+                </p>
+              </div>
+              <input
+                type="date"
+                value={examDate ?? ''}
+                onChange={(e) => handleExamDateChange(e.target.value)}
+                className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+                aria-label="Exam date"
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-text-primary font-medium">Theme</p>

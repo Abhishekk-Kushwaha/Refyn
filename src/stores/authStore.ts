@@ -2,7 +2,13 @@ import { create } from 'zustand';
 import { AuthSession, OnboardingState } from '@/types/auth.types';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabase/client';
 import { getExamUuid } from '@/services/taxonomy.service';
-import { configureAweLocal, configureAweSupabase, flushAwe } from '@/engine/engine';
+import {
+  aweEngine,
+  configureAweEphemeral,
+  configureAweLocal,
+  configureAweSupabase,
+  flushAwe,
+} from '@/engine/engine';
 import { configureQuestionPoolDemo, configureQuestionPoolSupabase } from '@/services/questionPool';
 import {
   configureFlashcardPoolDemo,
@@ -103,12 +109,30 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       },
     });
 
-    // Point questions + AWE at the live database for this user.
+    // Point questions + AWE at the live database for this user. The pools are
+    // resolved before the engine is configured, because the engine's
+    // housekeeping (orphan pruning) needs to know what content actually exists.
     await Promise.all([
       configureQuestionPoolSupabase('cat').catch(() => configureQuestionPoolDemo()),
       configureFlashcardPoolSupabase().catch(() => configureFlashcardPoolDemo()),
-      configureAweSupabase(userId, 'cat'),
     ]);
+    await configureAweSupabase(userId, 'cat');
+    runEngineHousekeeping();
+  };
+
+  /**
+   * Trigger 3 of the AWE (Doc 5 §10). Client-first, the daily tick runs on app
+   * open once the day has changed — it prunes served queue items, expired
+   * reviews, the seen-question ledger and orphaned card states, none of which
+   * had anywhere to happen before.
+   */
+  const runEngineHousekeeping = () => {
+    try {
+      aweEngine.pruneOrphanFlashcards();
+      aweEngine.dailyTick();
+    } catch {
+      // Housekeeping is best-effort; never block sign-in on it.
+    }
   };
 
   return {
@@ -122,17 +146,19 @@ export const useAuthStore = create<AuthStore>((set, get) => {
 
       // Demo/explore mode wins if flagged — works with or without Supabase.
       if (hasDemoFlag()) {
-        configureAweLocal();
         configureQuestionPoolDemo();
         configureFlashcardPoolDemo();
+        configureAweLocal();
+        runEngineHousekeeping();
         set({ session: demoSession, isDemo: true, onboarding: demoOnboarding, status: 'ready' });
         return;
       }
 
       if (!isSupabaseConfigured) {
-        configureAweLocal();
         configureQuestionPoolDemo();
         configureFlashcardPoolDemo();
+        configureAweLocal();
+        runEngineHousekeeping();
         set({ status: 'ready' });
         return;
       }
@@ -142,10 +168,13 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       if (data.session) {
         await loadProfile(data.session.user.id, data.session.user.email);
       } else {
-        // No session yet — the login screen runs on the mock pool/local engine.
-        configureAweLocal();
+        // No session yet — the login screen runs on the mock pool with an
+        // in-memory engine. It must NOT load the localStorage state: that is
+        // the previous demo user's data, and on a shared device the next person
+        // to reach the login screen would see it.
         configureQuestionPoolDemo();
         configureFlashcardPoolDemo();
+        configureAweEphemeral();
       }
 
       supabase.auth.onAuthStateChange((event, session) => {
@@ -155,6 +184,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
           if (event === 'SIGNED_IN' && session) {
             loadProfile(session.user.id, session.user.email);
           } else if (event === 'SIGNED_OUT') {
+            configureAweEphemeral();
             set({ session: null, isDemo: false, onboarding: emptyOnboarding });
           }
         }, 0);
@@ -191,9 +221,10 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       } catch {
         // still works for this tab
       }
-      configureAweLocal();
       configureQuestionPoolDemo();
       configureFlashcardPoolDemo();
+      configureAweLocal();
+      runEngineHousekeeping();
       set({ session: demoSession, isDemo: true, onboarding: demoOnboarding });
     },
 
@@ -209,8 +240,10 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       if (!isDemo && isSupabaseConfigured) {
         await getSupabase().auth.signOut();
       }
-      // Reset the engine + pool to a clean local state for the login screen.
-      configureAweLocal();
+      // Reset to a clean, EMPTY engine for the login screen. Reloading the
+      // localStorage state here showed the previous demo user's weakness data
+      // to whoever signed out.
+      configureAweEphemeral();
       configureQuestionPoolDemo();
       // Full reset (not the demo pool): the next sign-in must refetch the real
       // card bank rather than inherit the mock one.

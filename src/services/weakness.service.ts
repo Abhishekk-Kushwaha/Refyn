@@ -12,6 +12,7 @@ export interface SubtopicWeakness {
   topicName: string;
   attempts: number;
   correct: number;
+  skips: number;
   accuracy: number; // 0–100
   weaknessScore: number;
   band: WeaknessBand;
@@ -45,7 +46,9 @@ export const getWeaknessSnapshot = async (examId: string): Promise<WeaknessSnaps
   void examId; // required per Architecture doc Rule 4; scopes the query in Phase 1
   await new Promise((resolve) => setTimeout(resolve, 200));
 
-  const masteries = aweEngine.getMasteries().filter((m) => m.attempts > 0);
+  // Skipped-only concepts count too: a student who skips every Time-Speed-Distance
+  // question has told us something, and filtering on attempts alone hid it.
+  const masteries = aweEngine.getMasteries().filter((m) => m.attempts > 0 || m.skips > 0);
 
   const subtopics: SubtopicWeakness[] = masteries
     .map((m) => ({
@@ -54,6 +57,7 @@ export const getWeaknessSnapshot = async (examId: string): Promise<WeaknessSnaps
       topicName: m.topicName,
       attempts: m.attempts,
       correct: m.correct,
+      skips: m.skips,
       accuracy: Math.round(m.accuracy),
       weaknessScore: m.weaknessScore,
       band: bandForStatus[m.status],

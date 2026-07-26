@@ -1,4 +1,5 @@
-import { ConceptMastery, EngineMeta, FlashcardState, QueueItem } from './types';
+import { AweSnapshot, ConceptMastery, EngineMeta, FlashcardState, QueueItem } from './types';
+import { emptySnapshot, migrateSnapshot } from './migrate';
 
 // Storage behind an interface (Doc 5 §12 Stage B). The engine only ever talks
 // to AweStore — Phase 1 swaps LocalStorageAweStore for a Supabase adapter and
@@ -13,16 +14,22 @@ export interface AweStore {
   saveFlashcards(cards: Record<string, FlashcardState>): void;
   getMeta(): EngineMeta;
   saveMeta(meta: EngineMeta): void;
+  /** Whole-state read, for migration/merge/diagnostics. */
+  getSnapshot(): AweSnapshot;
 }
 
-const KEYS = {
+/** Current single-blob key. */
+export const AWE_LOCAL_KEY = 'refyn-awe-state';
+
+/** v1 wrote four separate keys; read them once so nobody loses their history. */
+const LEGACY_KEYS = {
   masteries: 'refyn-awe-mastery',
   queue: 'refyn-awe-queue',
   flashcards: 'refyn-awe-flashcards',
   meta: 'refyn-awe-meta',
 } as const;
 
-const read = <T,>(key: string, fallback: T): T => {
+export const lsReadJson = <T>(key: string, fallback: T): T => {
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
@@ -31,70 +38,84 @@ const read = <T,>(key: string, fallback: T): T => {
   }
 };
 
-const write = (key: string, value: unknown): void => {
+export const lsWriteJson = (key: string, value: unknown): void => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // storage unavailable — engine still works in-memory for the session
+    // storage unavailable / quota — the engine still works in-memory
   }
 };
 
-export class LocalStorageAweStore implements AweStore {
-  getMasteries(): Record<string, ConceptMastery> {
-    return read(KEYS.masteries, {});
+/** Read the local snapshot at `key`, absorbing the v1 four-key layout if present. */
+export const readLocalSnapshot = (key: string = AWE_LOCAL_KEY): AweSnapshot => {
+  const stored = lsReadJson<unknown>(key, null);
+  if (stored !== null) return migrateSnapshot(stored);
+
+  const legacy = {
+    masteries: lsReadJson(LEGACY_KEYS.masteries, {}),
+    queue: lsReadJson(LEGACY_KEYS.queue, []),
+    flashcards: lsReadJson(LEGACY_KEYS.flashcards, {}),
+    meta: lsReadJson(LEGACY_KEYS.meta, {}),
+  };
+  return migrateSnapshot(legacy);
+};
+
+export const writeLocalSnapshot = (snapshot: AweSnapshot, key: string = AWE_LOCAL_KEY): void =>
+  lsWriteJson(key, snapshot);
+
+/** Snapshot-backed store — one implementation, three persistence behaviours. */
+abstract class SnapshotStore implements AweStore {
+  protected snapshot: AweSnapshot = emptySnapshot();
+
+  getSnapshot(): AweSnapshot {
+    return this.snapshot;
   }
-  saveMasteries(masteries: Record<string, ConceptMastery>): void {
-    write(KEYS.masteries, masteries);
+
+  getMasteries() {
+    return this.snapshot.masteries;
   }
-  getQueue(): QueueItem[] {
-    return read(KEYS.queue, []);
+  saveMasteries(m: Record<string, ConceptMastery>) {
+    this.snapshot.masteries = m;
+    this.persist();
   }
-  saveQueue(queue: QueueItem[]): void {
-    write(KEYS.queue, queue);
+  getQueue() {
+    return this.snapshot.queue;
   }
-  getFlashcards(): Record<string, FlashcardState> {
-    return read(KEYS.flashcards, {});
+  saveQueue(q: QueueItem[]) {
+    this.snapshot.queue = q;
+    this.persist();
   }
-  saveFlashcards(cards: Record<string, FlashcardState>): void {
-    write(KEYS.flashcards, cards);
+  getFlashcards() {
+    return this.snapshot.flashcards;
   }
-  getMeta(): EngineMeta {
-    return read(KEYS.meta, { examDate: null, reviewsDue: {}, lastDailyTick: null });
+  saveFlashcards(f: Record<string, FlashcardState>) {
+    this.snapshot.flashcards = f;
+    this.persist();
   }
-  saveMeta(meta: EngineMeta): void {
-    write(KEYS.meta, meta);
+  getMeta() {
+    return this.snapshot.meta;
+  }
+  saveMeta(meta: EngineMeta) {
+    this.snapshot.meta = meta;
+    this.persist();
+  }
+
+  protected abstract persist(): void;
+}
+
+export class LocalStorageAweStore extends SnapshotStore {
+  constructor(private key: string = AWE_LOCAL_KEY) {
+    super();
+    this.snapshot = readLocalSnapshot(key);
+  }
+  protected persist(): void {
+    writeLocalSnapshot(this.snapshot, this.key);
   }
 }
 
 /** In-memory store — used by unit tests so they never touch localStorage. */
-export class MemoryAweStore implements AweStore {
-  private masteries: Record<string, ConceptMastery> = {};
-  private queue: QueueItem[] = [];
-  private flashcards: Record<string, FlashcardState> = {};
-  private meta: EngineMeta = { examDate: null, reviewsDue: {}, lastDailyTick: null };
-
-  getMasteries() {
-    return this.masteries;
-  }
-  saveMasteries(m: Record<string, ConceptMastery>) {
-    this.masteries = m;
-  }
-  getQueue() {
-    return this.queue;
-  }
-  saveQueue(q: QueueItem[]) {
-    this.queue = q;
-  }
-  getFlashcards() {
-    return this.flashcards;
-  }
-  saveFlashcards(f: Record<string, FlashcardState>) {
-    this.flashcards = f;
-  }
-  getMeta() {
-    return this.meta;
-  }
-  saveMeta(m: EngineMeta) {
-    this.meta = m;
+export class MemoryAweStore extends SnapshotStore {
+  protected persist(): void {
+    // nothing to do
   }
 }

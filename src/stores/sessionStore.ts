@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { MockQuestion } from '@/lib/mockQuestions';
+import { isAnswerCorrect } from '@/lib/grading';
 
 export interface AnswerRecord {
   questionId: string;
@@ -21,8 +22,15 @@ interface SessionStore {
   isActive: boolean;
 
   startSession: (questions: MockQuestion[], mode: PracticeMode, isTimed: boolean) => void;
-  submitAnswer: (selectedAnswer: string, timeTakenSeconds: number) => void;
-  skipCurrent: (timeTakenSeconds: number) => void;
+  // Both return the recorded answer so the caller can feed the AWE trigger
+  // without re-deriving correctness — one grading path, not two.
+  submitAnswer: (
+    selectedAnswer: string,
+    timeTakenSeconds: number
+  ) => { question: MockQuestion; answer: AnswerRecord } | null;
+  skipCurrent: (
+    timeTakenSeconds: number
+  ) => { question: MockQuestion; answer: AnswerRecord } | null;
   toggleMark: () => void;
   goNext: () => boolean;
   endSession: () => void;
@@ -43,44 +51,38 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   submitAnswer: (selectedAnswer, timeTakenSeconds) => {
     const { questions, currentIndex, answers } = get();
     const question = questions[currentIndex];
-    if (!question) return;
+    if (!question) return null;
 
-    const isCorrect =
-      selectedAnswer.trim().toLowerCase() === question.correctAnswer.trim().toLowerCase();
+    // Numeric-aware for TITA: "12.0", "1,200" and ".5" are not wrong answers.
+    const answer: AnswerRecord = {
+      questionId: question.id,
+      selectedAnswer,
+      isCorrect: isAnswerCorrect(selectedAnswer, question.correctAnswer),
+      timeTakenSeconds,
+      markedForReview: answers[question.id]?.markedForReview ?? false,
+      skipped: false,
+    };
 
-    set({
-      answers: {
-        ...answers,
-        [question.id]: {
-          questionId: question.id,
-          selectedAnswer,
-          isCorrect,
-          timeTakenSeconds,
-          markedForReview: answers[question.id]?.markedForReview ?? false,
-          skipped: false,
-        },
-      },
-    });
+    set({ answers: { ...answers, [question.id]: answer } });
+    return { question, answer };
   },
 
   skipCurrent: (timeTakenSeconds) => {
     const { questions, currentIndex, answers } = get();
     const question = questions[currentIndex];
-    if (!question) return;
+    if (!question) return null;
 
-    set({
-      answers: {
-        ...answers,
-        [question.id]: {
-          questionId: question.id,
-          selectedAnswer: null,
-          isCorrect: false,
-          timeTakenSeconds,
-          markedForReview: answers[question.id]?.markedForReview ?? false,
-          skipped: true,
-        },
-      },
-    });
+    const answer: AnswerRecord = {
+      questionId: question.id,
+      selectedAnswer: null,
+      isCorrect: false,
+      timeTakenSeconds,
+      markedForReview: answers[question.id]?.markedForReview ?? false,
+      skipped: true,
+    };
+
+    set({ answers: { ...answers, [question.id]: answer } });
+    return { question, answer };
   },
 
   toggleMark: () => {

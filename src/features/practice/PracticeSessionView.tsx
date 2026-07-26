@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui';
 import { EmptyState } from '@/components/feedback';
 import { useSessionStore } from '@/stores/sessionStore';
+import { aweEngine } from '@/engine/engine';
 import { Timer, TimerHandle } from './components/Timer';
 import { QuestionCard } from './components/QuestionCard';
 
@@ -58,16 +59,29 @@ export const PracticeSessionView = () => {
     }
   };
 
+  // Trigger 1 of the AWE (Doc 5 §10) fires here, per question, as it happens.
+  // Batching it on the results screen meant a student who closed the tab
+  // mid-quiz taught the engine nothing at all, and every attempt in a session
+  // landed on one identical timestamp.
+  const recordAttempt = (recorded: { question: typeof question; answer: { isCorrect: boolean; skipped: boolean; timeTakenSeconds: number } } | null) => {
+    if (!recorded) return;
+    aweEngine.onAttemptSaved(recorded.question, {
+      isCorrect: recorded.answer.isCorrect,
+      skipped: recorded.answer.skipped,
+      timeTakenSeconds: isTimed ? recorded.answer.timeTakenSeconds : undefined,
+    });
+  };
+
   const handleSubmit = () => {
     const elapsed = timerRef.current?.getElapsedSeconds() ?? 0;
     const answer = question.questionType === 'mcq' ? selectedOption! : titaValue.trim();
-    submitAnswer(answer, elapsed);
+    recordAttempt(submitAnswer(answer, elapsed));
     advance();
   };
 
   const handleSkip = () => {
     const elapsed = timerRef.current?.getElapsedSeconds() ?? 0;
-    skipCurrent(elapsed);
+    recordAttempt(skipCurrent(elapsed));
     advance();
   };
 

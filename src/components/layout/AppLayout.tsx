@@ -1,8 +1,32 @@
+import { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useToast } from '@/components/feedback';
+import { onAweStoreError } from '@/engine/engine';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 
 export const AppLayout = () => {
+  const toast = useToast();
+  const warnedRef = useRef(false);
+
+  // Persistence failures used to be swallowed entirely: the store logged
+  // nothing, showed nothing, and relied on "the next write will retry" — so a
+  // session that simply ended lost its progress in silence. Warn once per app
+  // session; the localStorage mirror means the data is still recoverable.
+  useEffect(
+    () =>
+      onAweStoreError((error) => {
+        if (!error || warnedRef.current) return;
+        warnedRef.current = true;
+        toast.error(
+          error === 'hydrate_failed'
+            ? "Couldn't load your saved progress — working offline for now."
+            : "Couldn't sync your progress to the cloud. It's saved on this device and will retry."
+        );
+      }),
+    [toast]
+  );
+
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-bg">
       {/* Sidebar (desktop only) */}

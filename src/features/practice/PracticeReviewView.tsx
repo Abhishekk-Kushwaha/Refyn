@@ -97,11 +97,20 @@ export const PracticeReviewView = () => {
       attempts
     );
 
-    // Fire the AWE triggers (Doc 5 §10): per-attempt rules (R001/R002), then
-    // the session-level transitions (R003–R006) on this quiz's per-concept accuracy.
-    answered.forEach(({ q, answer }) => aweEngine.onAttemptSaved(q, answer!.isCorrect, now));
+    // AWE trigger 2 (Doc 5 §10). Trigger 1 (R001/R002) already fired per
+    // question inside the session, so only the session-level transitions
+    // (R003–R006) run here — replaying attempts would double-count them.
+    // Skips are passed through: the engine records them as evidence, and they
+    // never count toward the per-concept sample size.
     aweEngine.onSessionCompleted(
-      answered.map(({ q, answer }) => ({ question: q, isCorrect: answer!.isCorrect })),
+      questions
+        .map((q) => ({ q, answer: answers[q.id] }))
+        .filter(({ answer }) => answer)
+        .map(({ q, answer }) => ({
+          question: q,
+          isCorrect: answer!.isCorrect,
+          skipped: answer!.skipped,
+        })),
       now
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps

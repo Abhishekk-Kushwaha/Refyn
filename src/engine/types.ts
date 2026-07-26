@@ -18,13 +18,22 @@ export interface ConceptMastery {
   frequencyWeight: number; // 1.3 very_high … 0.4 low
 
   // raw signal
-  attempts: number; // answered only — skips never count
+  attempts: number; // answered only — skips are tracked separately
   correct: number;
   incorrect: number;
-  accuracy: number; // 0–100
+  accuracy: number; // 0–100, lifetime
   consecutiveCorrect: number;
   consecutiveIncorrect: number; // powers the "back-to-back" trigger (R001)
-  last10: boolean[]; // rolling window of the last 10 results
+  last10: boolean[]; // rolling window of the last 10 answered results
+
+  // skips — a skipped question on a weak concept is evidence, so it is recorded
+  // rather than discarded. It never pollutes `accuracy`, which stays
+  // answered-only per Doc 5 §3.
+  skips: number;
+  consecutiveSkips: number;
+
+  // pacing — EWMA of timeTaken / expectedTime. Correct-but-slow is not mastery.
+  avgTimeRatio: number | null;
 
   // computed
   masteryScore: number; // 0–100, rises slow / falls fast (§5)
@@ -38,7 +47,9 @@ export interface ConceptMastery {
   firstWeakAt: string | null;
   resolvedAt: string | null;
   timesReopened: number;
-  revisionFails: number; // consecutive failed revisions while mastered (R006)
+  revisionFails: number; // failed revisions while mastered (R006)
+  lastRevisionFailAt: string | null; // so "twice in a row" is bounded in time
+  improvingSessions: number; // consecutive qualifying sessions before mastery (R005)
 
   lastAttemptAt: string | null;
 }
@@ -56,8 +67,9 @@ export interface QueueItem {
   reason: QueueReason;
   priority: number;
   preferReplicas: boolean;
-  count: number;
-  consumed: boolean;
+  count: number; // how many questions this item asked for
+  served: number; // how many have actually been served against it
+  consumed: boolean; // true once served >= count
   createdAt: string;
 }
 
@@ -73,23 +85,49 @@ export interface RuleResult {
   actions: EngineAction[];
 }
 
+/** What a single answered/skipped question tells the engine. */
+export interface AttemptSignal {
+  isCorrect: boolean;
+  skipped?: boolean;
+  difficulty?: number;
+  timeTakenSeconds?: number;
+  expectedTimeSeconds?: number;
+}
+
 // SM-2 flashcard state (Doc 5 §8), one per (user, card).
 export type FlashcardMastery = 'new' | 'learning' | 'reviewing' | 'mastered';
+
+/** SM-2 recall quality. Binary grading gives the ease factor nothing to work with. */
+export type ReviewGrade = 'again' | 'good' | 'easy';
 
 export interface FlashcardState {
   cardId: string;
   conceptId: string;
-  easeFactor: number; // starts 2.5, floor 1.3
-  intervalDays: number; // starts 1
+  easeFactor: number; // starts 2.5, clamped [1.3, 2.7]
+  intervalDays: number; // 0 while in the sub-day learning steps
   consecutiveCorrect: number;
   reviewCount: number;
+  lapses: number; // times the card was forgotten after graduating
+  learningStep: number; // index into the learning ladder; -1 once graduated
   mastery: FlashcardMastery;
-  nextReviewAt: string; // ISO date
+  nextReviewAt: string; // ISO — day-aligned once the card graduates
   lastReviewedAt: string | null;
 }
 
 export interface EngineMeta {
   examDate: string | null; // ISO — powers the pre-CAT revival window (R009)
   reviewsDue: Record<string, string>; // conceptId → ISO due date (schedule_review)
-  lastDailyTick: string | null;
+  lastDailyTick: string | null; // ISO — the daily tick's idempotency key
+  seenQuestions: Record<string, string>; // questionId → ISO last served (cooldown)
+}
+
+/** Bumped whenever the persisted shape changes; drives migrateState(). */
+export const AWE_STATE_VERSION = 2;
+
+export interface AweSnapshot {
+  version: number;
+  masteries: Record<string, ConceptMastery>;
+  queue: QueueItem[];
+  flashcards: Record<string, FlashcardState>;
+  meta: EngineMeta;
 }

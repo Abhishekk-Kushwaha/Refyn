@@ -1,22 +1,34 @@
 import { AWE_CONFIG, AweConfig } from './aweConfig';
-import { applyAttempt, applyConceptQuizResult, initConceptMastery } from './rules';
+import { applyAttempt, applyConceptQuizResult, applyFlashcardSignal, initConceptMastery } from './rules';
 import { buildQuiz } from './quizBuilder';
-import { initFlashcardState, isDue, reviewGotIt, reviewNotSure } from './flashcardSM2';
-import { recomputeScores } from './masteryScore';
+import { initFlashcardState, isDue, isLearning, previewIntervals, resurface, reviewCard } from './flashcardSM2';
 import { AweStore } from './store';
-import { HybridAweStore } from './hybridStore';
-import { ConceptMastery, EngineAction, FlashcardState, QueueItem } from './types';
+import { AweStoreError, HybridAweStore } from './hybridStore';
+import {
+  AttemptSignal,
+  ConceptMastery,
+  EngineAction,
+  FlashcardState,
+  QueueItem,
+  ReviewGrade,
+} from './types';
 import { MockQuestion, SUBTOPIC_META } from '@/lib/mockQuestions';
 import { getFlashcardPool } from '@/services/flashcardPool';
 
 // ============================================================
 // AWE ENGINE FACADE — the three triggers (Doc 5 §10) over pure rules.
-// onAttemptSaved / onSessionCompleted fire from the practice flow;
-// buildDailyQuiz composes the 70/20/10 blend on demand (client-first
-// stand-in for the daily tick's queue build).
+// onAttemptSaved fires per question during the session; onSessionCompleted
+// fires once at the end; dailyTick does the housekeeping and buildDailyQuiz
+// composes the 70/20/10 blend.
 // ============================================================
 
 const DAY_MS = 1000 * 60 * 60 * 24;
+
+export interface SessionOutcome {
+  question: MockQuestion;
+  isCorrect: boolean;
+  skipped?: boolean;
+}
 
 export class AweEngine {
   constructor(
@@ -42,41 +54,87 @@ export class AweEngine {
     });
   }
 
+  /**
+   * Materialise (or resurface) a concept's cards.
+   *
+   * Creating state only when absent made `queue_flashcards` a permanent no-op
+   * after the first firing: a concept that regressed months later re-queued
+   * cards that were still scheduled 60 days out, so nothing ever appeared.
+   */
+  private materializeCards(
+    cards: Record<string, FlashcardState>,
+    conceptId: string,
+    count: number,
+    now: string
+  ): boolean {
+    const available = getFlashcardPool()
+      .filter((c) => c.conceptId === conceptId)
+      // Deterministic, and least-established cards first, so repeated queues
+      // reach cards 4 and 5 instead of always re-picking the same slice.
+      .sort((a, b) => {
+        const sa = cards[a.id];
+        const sb = cards[b.id];
+        const rank = (s: FlashcardState | undefined) => (s ? s.intervalDays + 1 : 0);
+        return rank(sa) - rank(sb) || a.id.localeCompare(b.id);
+      })
+      .slice(0, Math.max(1, count));
+
+    let changed = false;
+    for (const card of available) {
+      const existing = cards[card.id];
+      if (!existing) {
+        cards[card.id] = initFlashcardState(card.id, card.conceptId, now, this.config);
+        changed = true;
+      } else {
+        const next = resurface(existing, now);
+        if (next !== existing) {
+          cards[card.id] = next;
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
   private executeActions(actions: EngineAction[], now: string): void {
     if (actions.length === 0) return;
     const queue = this.store.getQueue();
     const flashcards = this.store.getFlashcards();
     const meta = this.store.getMeta();
+    const masteries = this.store.getMasteries();
     let queueChanged = false;
     let cardsChanged = false;
     let metaChanged = false;
 
     for (const action of actions) {
       if (action.type === 'queue_questions') {
-        const masteries = this.store.getMasteries();
         const priority = masteries[action.conceptId]?.priorityWeight ?? 1;
-        queue.push({
-          id: `${action.conceptId}-${action.reason}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          conceptId: action.conceptId,
-          reason: action.reason,
-          priority,
-          preferReplicas: action.preferReplicas,
-          count: action.count,
-          consumed: false,
-          createdAt: now,
-        } satisfies QueueItem);
+        // Top up an existing open request rather than stacking duplicates —
+        // consumed items were never pruned and the queue grew without bound.
+        const open = queue.find(
+          (i) => !i.consumed && i.conceptId === action.conceptId && i.reason === action.reason
+        );
+        if (open) {
+          open.count = Math.max(open.count, open.served + action.count);
+          open.priority = priority;
+          open.preferReplicas = open.preferReplicas || action.preferReplicas;
+        } else {
+          queue.push({
+            id: `${action.conceptId}-${action.reason}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            conceptId: action.conceptId,
+            reason: action.reason,
+            priority,
+            preferReplicas: action.preferReplicas,
+            count: action.count,
+            served: 0,
+            consumed: false,
+            createdAt: now,
+          } satisfies QueueItem);
+        }
         queueChanged = true;
       } else if (action.type === 'queue_flashcards') {
-        // Materialize SM-2 state for this concept's cards so they're due now.
-        const cards = getFlashcardPool().filter((c) => c.conceptId === action.conceptId).slice(
-          0,
-          action.count
-        );
-        for (const card of cards) {
-          if (!flashcards[card.id]) {
-            flashcards[card.id] = initFlashcardState(card.id, card.conceptId, now);
-            cardsChanged = true;
-          }
+        if (this.materializeCards(flashcards, action.conceptId, action.count, now)) {
+          cardsChanged = true;
         }
       } else if (action.type === 'schedule_review') {
         meta.reviewsDue[action.conceptId] = new Date(
@@ -91,39 +149,59 @@ export class AweEngine {
     if (metaChanged) this.store.saveMeta(meta);
   }
 
-  /** Trigger 1 — after every answered question (skips never reach here). */
-  onAttemptSaved(question: MockQuestion, isCorrect: boolean, now = new Date().toISOString()): void {
+  /**
+   * Trigger 1 — after every answered *or skipped* question.
+   *
+   * Called live from the session, not batched on the results screen: batching
+   * meant a student who closed the tab mid-quiz taught the engine nothing, and
+   * every attempt landed on an identical timestamp.
+   */
+  onAttemptSaved(
+    question: MockQuestion,
+    signal: AttemptSignal,
+    now = new Date().toISOString()
+  ): void {
     const masteries = this.store.getMasteries();
     const current = this.getOrInitMastery(masteries, question);
-    const { mastery, actions } = applyAttempt(current, isCorrect, now, this.config);
+    const enriched: AttemptSignal = {
+      ...signal,
+      difficulty: signal.difficulty ?? question.difficulty,
+      expectedTimeSeconds: signal.expectedTimeSeconds ?? question.expectedTimeSeconds,
+    };
+    const { mastery, actions } = applyAttempt(current, enriched, now, this.config);
     masteries[mastery.conceptId] = mastery;
     this.store.saveMasteries(masteries);
     this.executeActions(actions, now);
   }
 
-  /** Trigger 2 — once when a session ends, with every answered result. */
-  onSessionCompleted(
-    results: { question: MockQuestion; isCorrect: boolean }[],
-    now = new Date().toISOString()
-  ): void {
+  /** Trigger 2 — once when a session ends, with every result it contained. */
+  onSessionCompleted(results: SessionOutcome[], now = new Date().toISOString()): void {
     if (results.length === 0) return;
 
-    // per-concept session accuracy
-    const byConcept = new Map<string, { correct: number; total: number }>();
+    // Per-concept session accuracy, plus the sample size behind it. A concept
+    // that contributed one question is not evidence of a lifecycle change.
+    const byConcept = new Map<string, { correct: number; answered: number }>();
     for (const r of results) {
-      const entry = byConcept.get(r.question.subtopicId) ?? { correct: 0, total: 0 };
-      entry.total += 1;
+      if (r.skipped) continue;
+      const entry = byConcept.get(r.question.subtopicId) ?? { correct: 0, answered: 0 };
+      entry.answered += 1;
       if (r.isCorrect) entry.correct += 1;
       byConcept.set(r.question.subtopicId, entry);
     }
 
     const masteries = this.store.getMasteries();
     const allActions: EngineAction[] = [];
-    for (const [conceptId, { correct, total }] of byConcept) {
+    for (const [conceptId, { correct, answered }] of byConcept) {
       const current = masteries[conceptId];
-      if (!current) continue; // onAttemptSaved always ran first
-      const quizAccuracy = (correct / total) * 100;
-      const { mastery, actions } = applyConceptQuizResult(current, quizAccuracy, now, this.config);
+      if (!current || answered === 0) continue;
+      const quizAccuracy = (correct / answered) * 100;
+      const { mastery, actions } = applyConceptQuizResult(
+        current,
+        quizAccuracy,
+        answered,
+        now,
+        this.config
+      );
       masteries[conceptId] = mastery;
       allActions.push(...actions);
     }
@@ -131,7 +209,65 @@ export class AweEngine {
     this.executeActions(allActions, now);
   }
 
-  /** Trigger 3 (client-first form) — compose the daily blended quiz on demand. */
+  /** Trigger 3 — housekeeping, once per day, idempotent within the day. */
+  dailyTick(now = new Date().toISOString()): boolean {
+    const meta = this.store.getMeta();
+    const today = now.slice(0, 10);
+    if (meta.lastDailyTick?.slice(0, 10) === today) return false;
+
+    const nowMs = new Date(now).getTime();
+
+    // 1. Drop fully-served queue items — they were never pruned and grew forever.
+    const queue = this.store.getQueue().filter((i) => !i.consumed);
+    this.store.saveQueue(queue);
+
+    // 2. Expire scheduled reviews that have long since passed, and seen-question
+    //    entries older than the cooldown, so the blob stays bounded.
+    const cooldownMs = this.config.question_cooldown_days * DAY_MS;
+    const reviewsDue: Record<string, string> = {};
+    for (const [conceptId, iso] of Object.entries(meta.reviewsDue)) {
+      if (nowMs - new Date(iso).getTime() < 90 * DAY_MS) reviewsDue[conceptId] = iso;
+    }
+    const seen = Object.entries(meta.seenQuestions)
+      .filter(([, iso]) => nowMs - new Date(iso).getTime() < cooldownMs)
+      .sort((a, b) => b[1].localeCompare(a[1]))
+      .slice(0, this.config.seen_history_limit);
+
+    this.store.saveMeta({
+      ...meta,
+      reviewsDue,
+      seenQuestions: Object.fromEntries(seen),
+      lastDailyTick: now,
+    });
+
+    // 3. Drop card states whose card no longer exists in the pool.
+    this.pruneOrphanFlashcards();
+    return true;
+  }
+
+  /**
+   * Remove SM-2 state for cards that are not in the current pool.
+   *
+   * Orphans (from a demo→account pool switch, or a re-seeded bank) were counted
+   * as "materialised" but filtered out of the deck, so the Flashcards tab showed
+   * "All caught up" forever while holding zero reviewable cards.
+   */
+  pruneOrphanFlashcards(): number {
+    const live = new Set(getFlashcardPool().map((c) => c.id));
+    if (live.size === 0) return 0; // pool not loaded yet — don't nuke valid state
+    const cards = this.store.getFlashcards();
+    let removed = 0;
+    for (const id of Object.keys(cards)) {
+      if (!live.has(id)) {
+        delete cards[id];
+        removed += 1;
+      }
+    }
+    if (removed > 0) this.store.saveFlashcards(cards);
+    return removed;
+  }
+
+  /** Compose the daily blended quiz (R007). */
   buildDailyQuiz(pool: MockQuestion[], total: number, now = new Date().toISOString()): MockQuestion[] {
     const masteries = Object.values(this.store.getMasteries());
     const queue = this.store.getQueue();
@@ -140,20 +276,35 @@ export class AweEngine {
       ? Math.ceil((new Date(meta.examDate).getTime() - new Date(now).getTime()) / DAY_MS)
       : null;
 
-    const { slots, consumedQueueIds } = buildQuiz(
+    const { slots, queueServed, servedQuestionIds } = buildQuiz({
       masteries,
       pool,
       queue,
       total,
-      this.config,
+      config: this.config,
       daysToExam,
-      meta.reviewsDue,
-      now
-    );
+      reviewsDue: meta.reviewsDue,
+      seenQuestions: meta.seenQuestions,
+      now,
+    });
 
-    if (consumedQueueIds.length > 0) {
-      const consumed = new Set(consumedQueueIds);
-      this.store.saveQueue(queue.map((i) => (consumed.has(i.id) ? { ...i, consumed: true } : i)));
+    // Credit the queue by how many questions each item actually contributed.
+    if (Object.keys(queueServed).length > 0) {
+      this.store.saveQueue(
+        queue.map((item) => {
+          const justServed = queueServed[item.id];
+          if (!justServed) return item;
+          const served = Math.min(item.count, item.served + justServed);
+          return { ...item, served, consumed: served >= item.count };
+        })
+      );
+    }
+
+    // Record what was served so the cooldown can keep the bank rotating.
+    if (servedQuestionIds.length > 0) {
+      const seenQuestions = { ...meta.seenQuestions };
+      for (const id of servedQuestionIds) seenQuestions[id] = now;
+      this.store.saveMeta({ ...this.store.getMeta(), seenQuestions });
     }
 
     return slots.map((s) => s.question);
@@ -163,9 +314,22 @@ export class AweEngine {
     return Object.values(this.store.getMasteries());
   }
 
+  // ---- Exam date (R009's pre-CAT revival window) ----
+
+  getExamDate(): string | null {
+    return this.store.getMeta().examDate;
+  }
+
   setExamDate(iso: string | null): void {
     const meta = this.store.getMeta();
     this.store.saveMeta({ ...meta, examDate: iso });
+  }
+
+  /** Days until the exam, or null when no date is set. */
+  daysToExam(now = new Date().toISOString()): number | null {
+    const examDate = this.getExamDate();
+    if (!examDate) return null;
+    return Math.ceil((new Date(examDate).getTime() - new Date(now).getTime()) / DAY_MS);
   }
 
   // ---- Flashcards (Doc 5 §8) ----
@@ -174,41 +338,77 @@ export class AweEngine {
     return Object.values(this.store.getFlashcards());
   }
 
-  /** Cards due now, weakest concept first (priorityWeight desc). */
-  getDueFlashcards(now = new Date().toISOString()): FlashcardState[] {
-    const masteries = this.store.getMasteries();
-    return this.getFlashcardStates()
-      .filter((s) => isDue(s, now))
-      .sort(
-        (a, b) =>
-          (masteries[b.conceptId]?.priorityWeight ?? 0) -
-          (masteries[a.conceptId]?.priorityWeight ?? 0)
-      );
+  /** Card states that still have content in the current pool. */
+  getLiveFlashcardStates(): FlashcardState[] {
+    const live = new Set(getFlashcardPool().map((c) => c.id));
+    return this.getFlashcardStates().filter((s) => live.has(s.cardId));
   }
 
   /**
-   * Apply an SM-2 review (R010/R011) and nudge the concept's mastery —
-   * consistent flashcard success is a positive mastery signal between quizzes;
-   * a "Not sure" is a guard against false mastery (Doc 5 §8).
+   * Cards due now — learning-step cards first (they are mid-acquisition), then
+   * weakest concept first. Capped so a long absence doesn't present a
+   * hundred-card wall.
    */
-  reviewFlashcard(cardId: string, gotIt: boolean, now = new Date().toISOString()): FlashcardState {
+  getDueFlashcards(now = new Date().toISOString(), limit = this.config.flashcard_daily_limit): FlashcardState[] {
+    const masteries = this.store.getMasteries();
+    return this.getLiveFlashcardStates()
+      .filter((s) => isDue(s, now))
+      .sort((a, b) => {
+        const learningDelta = Number(isLearning(b)) - Number(isLearning(a));
+        if (learningDelta !== 0) return learningDelta;
+        return (
+          (masteries[b.conceptId]?.priorityWeight ?? 0) -
+          (masteries[a.conceptId]?.priorityWeight ?? 0)
+        );
+      })
+      .slice(0, limit);
+  }
+
+  getFlashcardState(cardId: string): FlashcardState | null {
+    return this.store.getFlashcards()[cardId] ?? null;
+  }
+
+  /**
+   * Cards that exist but aren't due yet, soonest first — so a student who is
+   * caught up can still choose to study ahead instead of being told to go away.
+   */
+  getUpcomingFlashcards(now = new Date().toISOString(), limit = this.config.flashcard_daily_limit): FlashcardState[] {
+    return this.getLiveFlashcardStates()
+      .filter((s) => !isDue(s, now))
+      .sort((a, b) => a.nextReviewAt.localeCompare(b.nextReviewAt))
+      .slice(0, limit);
+  }
+
+  /** What each grade button will schedule, so the UI never re-derives the maths. */
+  previewCard(cardId: string): Record<ReviewGrade, number> | null {
+    const state = this.store.getFlashcards()[cardId];
+    return state ? previewIntervals(state, this.config) : null;
+  }
+
+  /**
+   * Apply an SM-2 review (R010/R011) and nudge the concept's mastery.
+   *
+   * The nudge only moves `masteryScore`, which R005 reads as a *gate* — so
+   * consistent flashcard success genuinely contributes to opting a concept out,
+   * but can never satisfy the mastery bar on its own.
+   */
+  reviewFlashcard(
+    cardId: string,
+    grade: ReviewGrade,
+    now = new Date().toISOString()
+  ): FlashcardState {
     const cards = this.store.getFlashcards();
     const current = cards[cardId];
     if (!current) throw new Error(`Unknown flashcard state: ${cardId}`);
 
-    const next = gotIt ? reviewGotIt(current, now) : reviewNotSure(current, now);
+    const next = reviewCard(current, grade, now, this.config);
     cards[cardId] = next;
     this.store.saveFlashcards(cards);
 
     const masteries = this.store.getMasteries();
     const m = masteries[current.conceptId];
     if (m) {
-      const updated = { ...m };
-      updated.masteryScore = gotIt
-        ? Math.min(100, Math.round((updated.masteryScore + 2) * 10) / 10)
-        : Math.round(updated.masteryScore * 0.95 * 10) / 10;
-      recomputeScores(updated, now);
-      masteries[updated.conceptId] = updated;
+      masteries[m.conceptId] = applyFlashcardSignal(m, grade !== 'again', now, this.config);
       this.store.saveMasteries(masteries);
     }
 
@@ -221,6 +421,9 @@ export class AweEngine {
 const hybridStore = new HybridAweStore();
 export const aweEngine = new AweEngine(hybridStore);
 
+/** Login screen / signed out: in-memory only, so nothing bleeds between users. */
+export const configureAweEphemeral = (): void => hybridStore.configureEphemeral();
+
 /** Demo/explore: point the engine at localStorage-backed state. */
 export const configureAweLocal = (): void => hybridStore.configureLocal();
 
@@ -230,3 +433,9 @@ export const configureAweSupabase = (userId: string, examSlug: string): Promise<
 
 /** Persist any pending engine writes immediately (before sign-out). */
 export const flushAwe = (): Promise<void> => hybridStore.flushNow();
+
+/** Subscribe to persistence failures so the UI can tell the user the truth. */
+export const onAweStoreError = (listener: (e: AweStoreError | null) => void): (() => void) =>
+  hybridStore.onError(listener);
+
+export const getAweStoreError = (): AweStoreError | null => hybridStore.getLastError();
