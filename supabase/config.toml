@@ -1,0 +1,6 @@
+project_id = "nxykkxqfipvzvlwpyszl"
+
+[functions.ai-explain]
+# JWT verification stays on: the function spends metered Gemini quota, so it
+# must not be callable by anyone who discovers the URL.
+verify_jwt = true

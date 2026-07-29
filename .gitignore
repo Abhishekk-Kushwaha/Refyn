@@ -10,6 +10,10 @@ node_modules
 /dist
 /build
 
+# Supabase CLI local state — .temp/pooler-url holds a Postgres connection
+# string with credentials in it. Never commit this directory.
+supabase/.temp/
+
 # Misc
 .DS_Store
 *.pem

@@ -1,17 +1,18 @@
 import { MockQuestion } from '@/lib/mockQuestions';
 import { AppError } from '@/lib/errors';
 import { env } from '@/config/env';
+import { getSupabase, isSupabaseConfigured } from '@/services/supabase/client';
 
 // AI solution explanations for post-quiz review.
 //
-// The UI (SolutionCard "Explain with AI") is fully built and calls through here
-// today. Nothing is wired to a model yet: isAiExplainerConfigured() is false
-// until VITE_AI_EXPLAIN_URL points at the explain endpoint, and the button
-// renders in a "coming soon" state instead of firing a request.
+// The UI (SolutionCard "Explain with AI") calls through here. Requests go to
+// VITE_AI_EXPLAIN_URL — the ai-explain Supabase Edge Function, which holds the
+// model API key server-side and returns { explanation: string }. The key is
+// deliberately not a VITE_ variable: those are compiled into the browser
+// bundle, where anyone could read it. See supabase/functions/ai-explain.
 //
-// To switch it on, set VITE_AI_EXPLAIN_URL and make the endpoint accept the
-// AiExplainRequest body below and return { explanation: string }. No component
-// changes needed.
+// With the URL unset, isAiExplainerConfigured() is false and the button stays
+// in its coming-soon state instead of firing a request.
 
 export interface AiExplainRequest {
   questionId: string;
@@ -66,17 +67,39 @@ export const explainQuestion = async (request: AiExplainRequest): Promise<AiExpl
   }
 
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    // The endpoint verifies the caller's JWT, so quota can only be spent by
+    // signed-in learners rather than by anyone who finds the URL.
+    if (isSupabaseConfigured) {
+      const { data: { session } } = await getSupabase().auth.getSession();
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+        headers.apikey = env.supabaseAnonKey;
+      }
+    }
+
     const response = await fetch(env.aiExplainUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(request),
     });
 
+    const data = (await response.json().catch(() => ({}))) as Partial<AiExplanation> & {
+      error?: string;
+    };
+
     if (!response.ok) {
-      throw new AppError('NETWORK_ERROR', "Couldn't reach the AI tutor. Please try again.");
+      if (response.status === 401) {
+        throw new AppError('AUTH_ERROR', 'Please sign in again to use AI explanations.');
+      }
+      // The endpoint sends a learner-safe message; fall back if it didn't.
+      throw new AppError(
+        'NETWORK_ERROR',
+        data.error || "Couldn't reach the AI tutor. Please try again."
+      );
     }
 
-    const data = (await response.json()) as Partial<AiExplanation>;
     if (!data.explanation) {
       throw new AppError('UNKNOWN', 'The AI tutor returned an empty explanation.');
     }
