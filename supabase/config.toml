@@ -1,6 +1,13 @@
 project_id = "nxykkxqfipvzvlwpyszl"
 
 [functions.ai-explain]
-# JWT verification stays on: the function spends metered Gemini quota, so it
-# must not be callable by anyone who discovers the URL.
-verify_jwt = true
+# Gateway-level JWT verification is OFF, but the function is NOT open: it
+# verifies the caller's token itself (see requireUser in index.ts).
+#
+# It has to work this way. With verify_jwt = true the platform answers the
+# CORS preflight before our code runs, and its reply carries no
+# Access-Control-Allow-Origin header — so every browser POST that sends an
+# Authorization header gets blocked before it is ever sent. Handling auth
+# in-function lets OPTIONS through with proper CORS headers while still
+# rejecting anonymous callers.
+verify_jwt = false

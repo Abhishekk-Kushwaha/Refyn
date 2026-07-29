@@ -17,6 +17,7 @@ const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*';
 // Injected into every Edge Function by the platform — no need to set these.
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
 // Gemini can stall; we would rather fail fast and let the learner retry than
 // hold the request open until the platform kills it.
@@ -100,6 +101,51 @@ const writeCache = async (questionId: string, variant: string, explanation: stri
   }
 };
 
+/**
+ * Confirms the caller is a signed-in learner. Replaces the gateway's
+ * verify_jwt, which cannot be used here without breaking CORS preflight.
+ * Returns the user id, or null if the token is missing or invalid.
+ */
+const requireUser = async (req: Request): Promise<string | null> => {
+  const auth = req.headers.get('Authorization');
+  if (!auth?.startsWith('Bearer ')) {
+    console.error('auth: no Bearer token on request');
+    return null;
+  }
+  const token = auth.slice(7).trim();
+  // The publishable/anon key is also sent as a Bearer token by unauthenticated
+  // clients; it is not a user session, so reject it explicitly.
+  if (!token || token === ANON_KEY || token === req.headers.get('apikey')) return null;
+
+  // Prefer the caller's own apikey over the injected SUPABASE_ANON_KEY. This
+  // project issues new-style sb_publishable_ keys, and the injected legacy
+  // anon key is not necessarily still valid — whereas the key the app is
+  // already authenticating with demonstrably is. Falls back for non-browser
+  // callers that omit the header.
+  const apikey = req.headers.get('apikey') || ANON_KEY;
+  if (!apikey) {
+    console.error('auth: no apikey available - token check cannot proceed');
+    return null;
+  }
+  try {
+    // apikey must be an anon/publishable key here, not service_role: this
+    // endpoint resolves the *user* behind the Bearer token, and service_role
+    // changes how it is interpreted.
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey },
+    });
+    if (!res.ok) {
+      console.error('auth: /auth/v1/user rejected token', res.status, (await res.text()).slice(0, 200));
+      return null;
+    }
+    const user = await res.json();
+    return user?.id ?? null;
+  } catch (e) {
+    console.error('auth check failed', e);
+    return null;
+  }
+};
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -176,8 +222,15 @@ const buildPrompt = (r: ExplainRequest, variant: string): string => {
 };
 
 Deno.serve(async (req: Request): Promise<Response> => {
+  // Must come first, and must not require auth — browsers send preflight
+  // without credentials.
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+
+  const userId = await requireUser(req);
+  if (!userId) {
+    return json({ error: 'Please sign in again to use AI explanations.' }, 401);
+  }
 
   if (!GEMINI_API_KEY) {
     console.error('GEMINI_API_KEY is not set on this function');
