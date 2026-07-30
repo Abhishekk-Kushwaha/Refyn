@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AuthSession, OnboardingState } from '@/types/auth.types';
+import { AppError } from '@/lib/errors';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabase/client';
 import { getExamUuid } from '@/services/taxonomy.service';
 import {
@@ -37,6 +38,11 @@ interface AuthStore {
 }
 
 const DEMO_KEY = 'refyn-demo-session';
+
+const CONFIRM_EMAIL_MESSAGE =
+  'Account created. Check your inbox and click the confirmation link, then sign in.';
+const UNCONFIRMED_EMAIL_MESSAGE =
+  'Confirm your email address first — check your inbox for the link, then sign in.';
 
 const demoSession: AuthSession = {
   user: {
@@ -225,10 +231,15 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         password,
       });
       if (error) throw error;
-      clearDemoFlag();
-      if (data.user) {
-        await loadProfile(data.user.id, data.user.email);
+      // Gate on the SESSION, never on data.user. A user row without a session
+      // is an account that exists but is not signed in; treating it as signed
+      // in is what produced an app that looked authenticated while holding no
+      // access token, so every backend call failed as if signed out.
+      if (!data.session) {
+        throw new AppError('AUTH_ERROR', UNCONFIRMED_EMAIL_MESSAGE);
       }
+      clearDemoFlag();
+      await loadProfile(data.session.user.id, data.session.user.email);
     },
 
     signup: async (email: string, password: string) => {
@@ -237,10 +248,14 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         password,
       });
       if (error) throw error;
-      clearDemoFlag();
-      if (data.user) {
-        await loadProfile(data.user.id, data.user.email);
+      // With "Confirm email" enabled, signUp resolves with a user and a NULL
+      // session and no error at all — the account is real but unusable until
+      // the emailed link is clicked. Say so instead of routing into the app.
+      if (!data.session) {
+        throw new AppError('AUTH_ERROR', CONFIRM_EMAIL_MESSAGE);
       }
+      clearDemoFlag();
+      await loadProfile(data.session.user.id, data.session.user.email);
     },
 
     skipAuth: () => {
