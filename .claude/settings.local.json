@@ -98,7 +98,8 @@
       "Bash(curl -s -X POST \"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent\" -H \"Content-Type: application/json\" -H \"x-goog-api-key: INVALID_TEST_KEY\" -d '{\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"hi\"}]}],\"generationConfig\":{\"thinkingConfig\":{\"thinkingLevel\":\"low\"}}}' --max-time 30)",
       "PowerShell(Get-Content .env.local -Raw | ForEach-Object { $_ -replace '\\(eyJ|sb_[a-z]+_\\)[A-Za-z0-9_\\\\-\\\\.]+','<KEY>' } | ForEach-Object { $_ -replace \"`r\",\"<CR>\" -replace \"`n\",\"<LF>`n\" })",
       "Bash(git fetch *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "Bash(git commit -m 'Support multiple Gemini API keys for free tier quota multiplication *)"
     ]
   }
 }
