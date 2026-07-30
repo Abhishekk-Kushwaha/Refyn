@@ -80,7 +80,15 @@
       "Bash(timeout 60 node -e ' *)",
       "Bash(timeout 180 git push -u origin fix/awe-flashcard-engine)",
       "Bash(timeout 240 npx supabase functions deploy ai-explain)",
-      "Bash(timeout 180 git push)"
+      "Bash(timeout 180 git push)",
+      "Bash(timeout 60 npx --yes gh repo view Abhishekk-Kushwaha/Refyn --json visibility -q .visibility)",
+      "Bash(curl -s -o /dev/null -w \"OPTIONS preflight -> HTTP %{http_code}\\\\n\" -X OPTIONS \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Origin: http://localhost:5173\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: authorization,content-type,apikey\")",
+      "Bash(curl -s -D- -o /dev/null -X OPTIONS \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Origin: http://localhost:5173\" -H \"Access-Control-Request-Method: POST\")",
+      "Bash(timeout 60 npx supabase secrets list)",
+      "Bash(curl -s -o /dev/null -w \"localhost:5173 -> HTTP %{http_code}\\\\n\" http://localhost:5173)",
+      "Bash(timeout 60 npx --yes gh auth status)",
+      "Bash(which gh *)",
+      "PowerShell($c = Get-Command gh -ErrorAction SilentlyContinue; if \\($c\\) { $c.Source } else { \"gh not installed\" })"
     ]
   }
 }
