@@ -99,7 +99,10 @@
       "PowerShell(Get-Content .env.local -Raw | ForEach-Object { $_ -replace '\\(eyJ|sb_[a-z]+_\\)[A-Za-z0-9_\\\\-\\\\.]+','<KEY>' } | ForEach-Object { $_ -replace \"`r\",\"<CR>\" -replace \"`n\",\"<LF>`n\" })",
       "Bash(git fetch *)",
       "Bash(git merge *)",
-      "Bash(git commit -m 'Support multiple Gemini API keys for free tier quota multiplication *)"
+      "Bash(git commit -m 'Support multiple Gemini API keys for free tier quota multiplication *)",
+      "WebFetch(domain:openrouter.ai)",
+      "Bash(./node_modules/.bin/esbuild supabase/functions/ai-explain/index.ts --target=esnext --outfile=\"C:/Users/Lenovo/AppData/Local/Temp/claude/D--Refyn/91416766-f2d5-4663-8344-02f2c6362a17/scratchpad/fn5.mjs\" --format=esm)",
+      "Bash(git commit -m 'Switch to OpenRouter for silent multi-provider AI failover *)"
     ]
   }
 }
