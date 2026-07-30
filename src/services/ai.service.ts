@@ -37,6 +37,25 @@ export interface AiExplanation {
 /** True once an explain endpoint is configured — gates the AI button's live behaviour. */
 export const isAiExplainerConfigured = (): boolean => Boolean(env.aiExplainUrl);
 
+/** Shown wherever the AI is offered to someone without a real account. */
+export const AI_SIGN_IN_MESSAGE =
+  'Sign in to see the AI explanation. The written solution above is still available.';
+
+/**
+ * The caller's Supabase access token, or null when nobody is really signed in.
+ * Demo/explore sessions land here as null: they are a local flag, not a real
+ * Supabase session, so they have no token to send.
+ */
+const getAccessToken = async (): Promise<string | null> => {
+  if (!isSupabaseConfigured) return null;
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+};
+
 export const buildExplainRequest = (
   question: MockQuestion,
   userAnswer: string | null,
@@ -66,18 +85,22 @@ export const explainQuestion = async (request: AiExplainRequest): Promise<AiExpl
     );
   }
 
-  try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // The endpoint verifies the caller's JWT, so quota can only be spent by
+  // signed-in learners rather than by anyone who finds the URL. Check for the
+  // token here rather than sending the request without one: an anonymous call
+  // can only ever come back 401, and the generic failure it produced read like
+  // the AI itself was down.
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw new AppError('AUTH_ERROR', AI_SIGN_IN_MESSAGE);
+  }
 
-    // The endpoint verifies the caller's JWT, so quota can only be spent by
-    // signed-in learners rather than by anyone who finds the URL.
-    if (isSupabaseConfigured) {
-      const { data: { session } } = await getSupabase().auth.getSession();
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-        headers.apikey = env.supabaseAnonKey;
-      }
-    }
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      apikey: env.supabaseAnonKey,
+    };
 
     const response = await fetch(env.aiExplainUrl, {
       method: 'POST',

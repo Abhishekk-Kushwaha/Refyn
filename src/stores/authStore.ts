@@ -69,6 +69,20 @@ const hasDemoFlag = (): boolean => {
   }
 };
 
+/**
+ * Retire the explore flag. This has to happen on every route INTO a real
+ * account, not just on logout: the flag outlives the demo session otherwise,
+ * and initialize() would read it on the next page load and hand a signed-in
+ * learner the demo user back.
+ */
+const clearDemoFlag = () => {
+  try {
+    localStorage.removeItem(DEMO_KEY);
+  } catch {
+    // ignore
+  }
+};
+
 export const useAuthStore = create<AuthStore>((set, get) => {
   /** Load the profile row for a signed-in user and hydrate session state. */
   const loadProfile = async (userId: string, email: string | undefined) => {
@@ -147,29 +161,37 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     initialize: async () => {
       if (get().status === 'ready') return;
 
-      // Demo/explore mode wins if flagged — works with or without Supabase.
-      if (hasDemoFlag()) {
-        configureQuestionPoolDemo();
-        configureFlashcardPoolDemo();
-        configureAweLocal();
-        runEngineHousekeeping();
-        set({ session: demoSession, isDemo: true, onboarding: demoOnboarding, status: 'ready' });
-        return;
-      }
-
+      // No backend at all — everything runs on the local pools, demo or not.
       if (!isSupabaseConfigured) {
         configureQuestionPoolDemo();
         configureFlashcardPoolDemo();
         configureAweLocal();
         runEngineHousekeeping();
-        set({ status: 'ready' });
+        set(
+          hasDemoFlag()
+            ? { session: demoSession, isDemo: true, onboarding: demoOnboarding, status: 'ready' }
+            : { status: 'ready' }
+        );
         return;
       }
 
       const supabase = getSupabase();
+      // The real session is resolved BEFORE the demo flag is consulted. The
+      // other order is what broke sign-in: a learner who explored first, then
+      // signed in properly, still carried the flag, so every reload took this
+      // branch and swapped their real account for the demo user — which has no
+      // Supabase token, so anything that talks to the backend (AI explanations
+      // especially) failed as if signed out.
       const { data } = await supabase.auth.getSession();
       if (data.session) {
+        clearDemoFlag();
         await loadProfile(data.session.user.id, data.session.user.email);
+      } else if (hasDemoFlag()) {
+        configureQuestionPoolDemo();
+        configureFlashcardPoolDemo();
+        configureAweLocal();
+        runEngineHousekeeping();
+        set({ session: demoSession, isDemo: true, onboarding: demoOnboarding });
       } else {
         // No session yet — the login screen runs on the mock pool with an
         // in-memory engine. It must NOT load the localStorage state: that is
@@ -185,6 +207,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         // this callback (deadlock risk), so hop off the event tick first.
         setTimeout(() => {
           if (event === 'SIGNED_IN' && session) {
+            clearDemoFlag();
             loadProfile(session.user.id, session.user.email);
           } else if (event === 'SIGNED_OUT') {
             configureAweEphemeral();
@@ -202,6 +225,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         password,
       });
       if (error) throw error;
+      clearDemoFlag();
       if (data.user) {
         await loadProfile(data.user.id, data.user.email);
       }
@@ -213,6 +237,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         password,
       });
       if (error) throw error;
+      clearDemoFlag();
       if (data.user) {
         await loadProfile(data.user.id, data.user.email);
       }

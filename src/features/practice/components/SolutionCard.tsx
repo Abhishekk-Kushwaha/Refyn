@@ -4,7 +4,9 @@ import clsx from 'clsx';
 import { MockQuestion } from '@/lib/mockQuestions';
 import { AnswerRecord } from '@/stores/sessionStore';
 import { getErrorMessage } from '@/lib/errors';
+import { useAuthStore } from '@/stores/authStore';
 import {
+  AI_SIGN_IN_MESSAGE,
   buildExplainRequest,
   explainQuestion,
   isAiExplainerConfigured,
@@ -53,10 +55,16 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
   const [aiError, setAiError] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
 
+  const session = useAuthStore((state) => state.session);
+  const isDemo = useAuthStore((state) => state.isDemo);
+
   const skipped = !answer || answer.skipped || answer.selectedAnswer === null;
   const isCorrect = !skipped && answer.isCorrect;
   const status = skipped ? 'skipped' : isCorrect ? 'correct' : 'wrong';
   const aiReady = isAiExplainerConfigured();
+  // Demo explorers have no Supabase token, so the endpoint can only refuse
+  // them. Say so on the button instead of letting them press it and fail.
+  const canUseAi = Boolean(session) && !isDemo;
 
   const statusLabel = { correct: 'Correct', wrong: 'Wrong', skipped: 'Skipped' }[status];
   const statusClass = {
@@ -203,7 +211,7 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
               {/* AI explanation — button is live now, the model plugs in behind ai.service */}
               <button
                 onClick={handleExplain}
-                disabled={isLoadingAi}
+                disabled={isLoadingAi || !canUseAi}
                 className={clsx(
                   'w-full flex items-center gap-2 p-2.5 rounded-md border border-accent bg-accent-subtle',
                   'text-accent text-sm font-semibold transition-all hover:border-accent',
@@ -216,14 +224,27 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
                   <SparkleIcon className="flex-shrink-0" />
                 )}
                 <span className="flex-1 text-left">
-                  {explanation ? 'Regenerate AI explanation' : 'Explain with AI'}
+                  {!canUseAi
+                    ? 'Sign in to see the AI explanation'
+                    : explanation
+                    ? 'Regenerate AI explanation'
+                    : 'Explain with AI'}
                 </span>
                 {!aiReady && (
                   <span className="text-[10px] font-semibold uppercase tracking-wide bg-surface px-1.5 py-0.5 rounded">
                     Soon
                   </span>
                 )}
+                {aiReady && !canUseAi && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide bg-surface px-1.5 py-0.5 rounded">
+                    Sign in
+                  </span>
+                )}
               </button>
+
+              {!canUseAi && (
+                <p className="text-xs text-text-muted mt-2">{AI_SIGN_IN_MESSAGE}</p>
+              )}
 
               {aiError && <p className="text-xs text-text-muted mt-2">{aiError}</p>}
 
