@@ -88,7 +88,15 @@
       "Bash(curl -s -o /dev/null -w \"localhost:5173 -> HTTP %{http_code}\\\\n\" http://localhost:5173)",
       "Bash(timeout 60 npx --yes gh auth status)",
       "Bash(which gh *)",
-      "PowerShell($c = Get-Command gh -ErrorAction SilentlyContinue; if \\($c\\) { $c.Source } else { \"gh not installed\" })"
+      "PowerShell($c = Get-Command gh -ErrorAction SilentlyContinue; if \\($c\\) { $c.Source } else { \"gh not installed\" })",
+      "Bash(curl -s -i -X OPTIONS \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Origin: http://localhost:5173\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: authorization,content-type,apikey\" --max-time 30)",
+      "Bash(curl -s -i -X POST \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Content-Type: application/json\" -H \"Origin: http://localhost:5173\" -d '{\"questionText\":\"x\",\"correctAnswer\":\"1\"}' --max-time 40)",
+      "Read(//c/Users/Lenovo/.supabase/**)",
+      "Bash(env)",
+      "WebSearch",
+      "Bash(curl -s -o /dev/null -w \"generateContent -> %{http_code}\\\\n\" -X POST \"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent\" -H \"Content-Type: application/json\" -H \"x-goog-api-key: INVALID_TEST_KEY\" -d '{\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"hi\"}]}],\"generationConfig\":{\"temperature\":0.3,\"maxOutputTokens\":2000,\"thinkingConfig\":{\"thinkingLevel\":\"low\"}}}' --max-time 30)",
+      "Bash(curl -s -X POST \"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent\" -H \"Content-Type: application/json\" -H \"x-goog-api-key: INVALID_TEST_KEY\" -d '{\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"hi\"}]}],\"generationConfig\":{\"thinkingConfig\":{\"thinkingLevel\":\"low\"}}}' --max-time 30)",
+      "PowerShell(Get-Content .env.local -Raw | ForEach-Object { $_ -replace '\\(eyJ|sb_[a-z]+_\\)[A-Za-z0-9_\\\\-\\\\.]+','<KEY>' } | ForEach-Object { $_ -replace \"`r\",\"<CR>\" -replace \"`n\",\"<LF>`n\" })"
     ]
   }
 }
