@@ -6,6 +6,10 @@ export const env = {
   // wired up — the review screen's "Explain with AI" button stays in its
   // coming-soon state while this is blank. See services/ai.service.ts.
   aiExplainUrl: import.meta.env.VITE_AI_EXPLAIN_URL ?? '',
+  // Endpoint for the dashboard's daily focus coaching line. Empty until the
+  // daily-focus function is deployed — the focus card then renders with the
+  // engine's own copy instead. See services/dailyFocus.service.ts.
+  aiFocusUrl: import.meta.env.VITE_AI_FOCUS_URL ?? '',
 } as const;
 
 export const isDev = import.meta.env.DEV;

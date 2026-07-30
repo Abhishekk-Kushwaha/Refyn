@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { SkeletonCard, Display, Eyebrow, StatBar, StatPill, ModeCard } from '@/components/ui';
 import { ErrorState, EmptyState, useToast } from '@/components/feedback';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
+import { useDailyFocus } from '@/hooks/useDailyFocus';
 import { useAuthStore } from '@/stores/authStore';
 import { useExamStore } from '@/stores/examStore';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -12,6 +13,7 @@ import { getQuestionsForSubtopic } from '@/services/questions.service';
 import { SubtopicWeakness } from '@/services/weakness.service';
 import { WeaknessRadar } from './components/WeaknessRadar';
 import { WeakTopicCard } from './components/WeakTopicCard';
+import { FocusCard } from './components/FocusCard';
 
 export const DashboardView = () => {
   const navigate = useNavigate();
@@ -23,6 +25,11 @@ export const DashboardView = () => {
   const startSession = useSessionStore((state) => state.startSession);
 
   const [drillingId, setDrillingId] = useState<string | null>(null);
+
+  // The engine's own ranking decides today's focus — subtopics arrive sorted
+  // weakest-first. The AI only writes the prose explaining that choice.
+  const focusSubtopic = data?.subtopics[0];
+  const focus = useDailyFocus(focusSubtopic, focusSubtopic?.frequencyWeight);
 
   const handleDrill = async (subtopic: SubtopicWeakness) => {
     setDrillingId(subtopic.subtopicId);
@@ -98,6 +105,17 @@ export const DashboardView = () => {
       {/* Success */}
       {!isLoading && !error && data && data.totalAttempts > 0 && (
         <div className="space-y-8">
+          {/* Today's focus — engine picks the concept, AI explains why */}
+          {focusSubtopic && (
+            <FocusCard
+              subtopic={focusSubtopic}
+              message={focus.data?.message ?? ''}
+              loading={focus.isLoading}
+              onDrill={handleDrill}
+              drilling={drillingId === focusSubtopic.subtopicId}
+            />
+          )}
+
           {/* Quick start cards */}
           <section className="space-y-2">
             <Eyebrow className="text-text-muted">Practice</Eyebrow>

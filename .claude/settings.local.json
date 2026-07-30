@@ -102,7 +102,11 @@
       "Bash(git commit -m 'Support multiple Gemini API keys for free tier quota multiplication *)",
       "WebFetch(domain:openrouter.ai)",
       "Bash(./node_modules/.bin/esbuild supabase/functions/ai-explain/index.ts --target=esnext --outfile=\"C:/Users/Lenovo/AppData/Local/Temp/claude/D--Refyn/91416766-f2d5-4663-8344-02f2c6362a17/scratchpad/fn5.mjs\" --format=esm)",
-      "Bash(git commit -m 'Switch to OpenRouter for silent multi-provider AI failover *)"
+      "Bash(git commit -m 'Switch to OpenRouter for silent multi-provider AI failover *)",
+      "Bash(grep -nE \"^\\(import|const|function|export|  //\\)|<h[12]|priority|weak|Weak\" src/features/dashboard/DashboardView.tsx)",
+      "Bash(timeout 300 npx vitest run --reporter=dot)",
+      "Bash(timeout 240 npx supabase functions deploy daily-focus --no-verify-jwt)",
+      "Bash(timeout 300 npx vite build)"
     ]
   }
 }

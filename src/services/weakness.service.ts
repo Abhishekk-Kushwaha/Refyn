@@ -18,6 +18,8 @@ export interface SubtopicWeakness {
   band: WeaknessBand;
   status: ConceptStatus;
   lastAttemptedAt: string | null;
+  /** How often the concept shows up in CAT: 1.3 very_high … 0.4 low. */
+  frequencyWeight: number;
 }
 
 export interface TopicWeakness {
@@ -63,6 +65,7 @@ export const getWeaknessSnapshot = async (examId: string): Promise<WeaknessSnaps
       band: bandForStatus[m.status],
       status: m.status,
       lastAttemptedAt: m.lastAttemptAt,
+      frequencyWeight: m.frequencyWeight,
     }))
     .sort((a, b) => b.weaknessScore - a.weaknessScore);
 
