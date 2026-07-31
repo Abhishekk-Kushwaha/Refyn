@@ -32,6 +32,13 @@ export interface SubtopicWeakness {
   everWasVeryWeak: boolean;
   /** Current wrong streak — a live signal that something just broke. */
   consecutiveIncorrect: number;
+
+  /** Mean seconds on answers they got RIGHT. Null until one is timed. */
+  avgSecondsCorrect: number | null;
+  /** Mean seconds on answers they got WRONG — long here means sinking time
+   *  into questions that still fail, which is worse than answering fast and
+   *  wrong. Null until one is timed. */
+  avgSecondsIncorrect: number | null;
 }
 
 export interface TopicWeakness {
@@ -83,6 +90,12 @@ export const getWeaknessSnapshot = async (examId: string): Promise<WeaknessSnaps
       timesReopened: m.timesReopened,
       everWasVeryWeak: m.everWasVeryWeak,
       consecutiveIncorrect: m.consecutiveIncorrect,
+      avgSecondsCorrect: m.timeCorrectCount
+        ? Math.round(m.timeCorrectTotal / m.timeCorrectCount)
+        : null,
+      avgSecondsIncorrect: m.timeIncorrectCount
+        ? Math.round(m.timeIncorrectTotal / m.timeIncorrectCount)
+        : null,
     }))
     .sort((a, b) => b.weaknessScore - a.weaknessScore);
 

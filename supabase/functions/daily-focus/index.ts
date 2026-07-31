@@ -76,6 +76,8 @@ interface ConceptSnapshot {
   ro?: number; // times reopened
   ci?: number; // consecutive incorrect
   vw?: boolean; // ever was very weak
+  sc?: number; // mean seconds on answers they got right
+  si?: number; // mean seconds on answers they got wrong
 }
 
 interface TopicRollup {
@@ -299,6 +301,11 @@ useful true thing. Patterns worth surfacing when the data shows them:
   * A concept marked slow: they are getting it right but too slowly to
     survive a real paper. That is a pacing problem, not a knowledge one, and
     is worth naming as such.
+  * Time sunk into wrong answers. When the average seconds on wrong answers
+    is far higher than on right ones, they are grinding at questions they do
+    not have a method for. In a timed paper that is the costliest habit
+    there is: the marks are lost and the minutes are gone too. Say so, and
+    the fix is recognising it early and moving on, not trying harder.
   * A weak concept they have been avoiding - high skips, or listed as not
     practised since last time.
   * Progress in one area while another slipped, when both appear.
@@ -384,6 +391,10 @@ const buildPrompt = (
       if (c.ro) bits.push(`re-broken ${c.ro}x`);
       if (c.ci && c.ci >= 3) bits.push(`${c.ci} wrong in a row`);
       if (c.vw) bits.push('was once very weak');
+      // Time sunk into wrong answers is the expensive kind. Surfaced next to
+      // the time spent when right, so the contrast is visible.
+      if (c.sc != null) bits.push(`avg ${c.sc}s when right`);
+      if (c.si != null) bits.push(`avg ${c.si}s when WRONG`);
       lines.push(`  key="${c.k}" | ${c.n} [${c.t}] - ${bits.join(', ')}`);
     }
     if (r.concepts.length > MAX_CONCEPTS_IN_PROMPT) {

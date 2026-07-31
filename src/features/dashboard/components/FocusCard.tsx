@@ -10,6 +10,25 @@ interface FocusCardProps {
   drilling: boolean;
 }
 
+/** 34s / 2m 10s — seconds alone stop reading as a duration past a minute. */
+const formatDuration = (seconds: number): string => {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s === 0 ? `${m}m` : `${m}m ${s}s`;
+};
+
+/**
+ * True when they spend materially longer on questions they get wrong than on
+ * ones they get right — the expensive habit in a timed paper, since both the
+ * marks and the minutes are lost. Needs a real gap, not a few seconds.
+ */
+const sinkingTime = (s: { avgSecondsCorrect: number | null; avgSecondsIncorrect: number | null }) =>
+  s.avgSecondsCorrect !== null &&
+  s.avgSecondsIncorrect !== null &&
+  s.avgSecondsIncorrect > s.avgSecondsCorrect * 1.5 &&
+  s.avgSecondsIncorrect - s.avgSecondsCorrect >= 30;
+
 const bandLabel: Record<WeaknessBand, string> = {
   critical: 'Weakest area',
   weak: 'Weak spot',
@@ -60,6 +79,24 @@ export const FocusCard = ({
         <p className="mt-0.5 font-body text-xs text-text-muted">
           {subtopic.topicName} · {subtopic.accuracy}% accuracy · {subtopic.attempts} attempted
         </p>
+
+        {/* Timing, once any attempt has been timed. Shown as two figures
+            rather than one average because the gap is the point: minutes
+            sunk into questions that still come out wrong is a different
+            problem from simply being slow. */}
+        {(subtopic.avgSecondsCorrect !== null || subtopic.avgSecondsIncorrect !== null) && (
+          <p className="mt-0.5 font-body text-xs text-text-muted">
+            {subtopic.avgSecondsCorrect !== null && (
+              <>avg {formatDuration(subtopic.avgSecondsCorrect)} when right</>
+            )}
+            {subtopic.avgSecondsCorrect !== null && subtopic.avgSecondsIncorrect !== null && ' · '}
+            {subtopic.avgSecondsIncorrect !== null && (
+              <span className={sinkingTime(subtopic) ? 'text-danger' : undefined}>
+                {formatDuration(subtopic.avgSecondsIncorrect)} when wrong
+              </span>
+            )}
+          </p>
+        )}
 
         <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">{message}</p>
       </>

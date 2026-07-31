@@ -41,6 +41,10 @@ export const initConceptMastery = (seed: {
   skips: 0,
   consecutiveSkips: 0,
   avgTimeRatio: null,
+  timeCorrectTotal: 0,
+  timeCorrectCount: 0,
+  timeIncorrectTotal: 0,
+  timeIncorrectCount: 0,
   masteryScore: 0,
   weaknessScore: 0,
   priorityWeight: seed.topicWeight * seed.frequencyWeight,
@@ -111,6 +115,21 @@ export const applyAttempt = (
   // ---- Answered ------------------------------------------------------------
   m.consecutiveSkips = 0;
   m.attempts += 1;
+
+  // Bank the raw duration against the outcome. Untimed attempts contribute
+  // nothing rather than counting as zero seconds, which would drag the
+  // average down and make a concept look faster than it is.
+  const seconds = signal.timeTakenSeconds;
+  if (typeof seconds === 'number' && seconds > 0) {
+    if (signal.isCorrect) {
+      m.timeCorrectTotal += seconds;
+      m.timeCorrectCount += 1;
+    } else {
+      m.timeIncorrectTotal += seconds;
+      m.timeIncorrectCount += 1;
+    }
+  }
+
   if (signal.isCorrect) {
     m.correct += 1;
     m.consecutiveCorrect += 1;

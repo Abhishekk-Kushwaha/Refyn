@@ -76,6 +76,17 @@ export const normalizeMastery = (raw: unknown, conceptId: string): ConceptMaster
     skips: Math.max(0, Math.round(num(raw.skips, 0))),
     consecutiveSkips: Math.max(0, Math.round(num(raw.consecutiveSkips, 0))),
     avgTimeRatio: typeof raw.avgTimeRatio === 'number' ? raw.avgTimeRatio : null,
+
+    // v2 → v3: raw per-outcome durations. Absent on every snapshot written
+    // before this, and correctly so — those seconds were never recorded and
+    // cannot be reconstructed. They start at zero and fill in from the next
+    // attempt onwards, so an existing learner simply has no timing history
+    // rather than a fabricated one.
+    timeCorrectTotal: Math.max(0, num(raw.timeCorrectTotal, 0)),
+    timeCorrectCount: Math.max(0, Math.round(num(raw.timeCorrectCount, 0))),
+    timeIncorrectTotal: Math.max(0, num(raw.timeIncorrectTotal, 0)),
+    timeIncorrectCount: Math.max(0, Math.round(num(raw.timeIncorrectCount, 0))),
+
     lastRevisionFailAt: str(raw.lastRevisionFailAt),
     improvingSessions: Math.max(0, Math.round(num(raw.improvingSessions, 0))),
 

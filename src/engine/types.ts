@@ -35,6 +35,18 @@ export interface ConceptMastery {
   // pacing — EWMA of timeTaken / expectedTime. Correct-but-slow is not mastery.
   avgTimeRatio: number | null;
 
+  // Raw seconds, kept separately for right and wrong answers.
+  //
+  // avgTimeRatio alone cannot express "spent five minutes and still got it
+  // wrong", because it collapses both outcomes into one smoothed number and
+  // discards the actual duration. Totals and counts are stored rather than a
+  // running mean so the averages stay exact and can be recombined at any
+  // level — concept, topic or section.
+  timeCorrectTotal: number; // seconds spent on answers that were right
+  timeCorrectCount: number;
+  timeIncorrectTotal: number; // seconds spent on answers that were wrong
+  timeIncorrectCount: number;
+
   // computed
   masteryScore: number; // 0–100, rises slow / falls fast (§5)
   weaknessScore: number; // dashboard ranking: "what hurts most now"
@@ -122,7 +134,10 @@ export interface EngineMeta {
 }
 
 /** Bumped whenever the persisted shape changes; drives migrateState(). */
-export const AWE_STATE_VERSION = 2;
+// v3 added per-outcome raw timing (timeCorrect*/timeIncorrect*). Older
+// snapshots migrate cleanly — the fields default to zero, since those seconds
+// were never recorded and must not be invented.
+export const AWE_STATE_VERSION = 3;
 
 export interface AweSnapshot {
   version: number;

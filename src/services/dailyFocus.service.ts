@@ -97,6 +97,8 @@ const toSnapshot = (s: SubtopicWeakness) => ({
   ro: s.timesReopened || undefined,
   ci: s.consecutiveIncorrect || undefined,
   vw: s.everWasVeryWeak || undefined,
+  sc: s.avgSecondsCorrect ?? undefined, // mean seconds when right
+  si: s.avgSecondsIncorrect ?? undefined, // mean seconds when wrong
 });
 
 export const getDailyFocus = async (
