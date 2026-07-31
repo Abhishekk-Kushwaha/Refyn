@@ -75,6 +75,17 @@ export const normalizeMastery = (raw: unknown, conceptId: string): ConceptMaster
     // v1 → v2 additions
     skips: Math.max(0, Math.round(num(raw.skips, 0))),
     consecutiveSkips: Math.max(0, Math.round(num(raw.consecutiveSkips, 0))),
+
+    // v3 → v4: the skip profile. Pre-v4 snapshots know how many skips
+    // happened but not what they looked like, so these start at zero and
+    // fill in from the next skip onward. The existing `skips` count is left
+    // alone — it is still true, just unqualified.
+    skipTimeTotal: Math.max(0, num(raw.skipTimeTotal, 0)),
+    skipTimeCount: Math.max(0, Math.round(num(raw.skipTimeCount, 0))),
+    skipDifficultyTotal: Math.max(0, num(raw.skipDifficultyTotal, 0)),
+    skipDifficultyCount: Math.max(0, Math.round(num(raw.skipDifficultyCount, 0))),
+    skipsEasy: Math.max(0, Math.round(num(raw.skipsEasy, 0))),
+    skipsHard: Math.max(0, Math.round(num(raw.skipsHard, 0))),
     avgTimeRatio: typeof raw.avgTimeRatio === 'number' ? raw.avgTimeRatio : null,
 
     // v2 → v3: raw per-outcome durations. Absent on every snapshot written

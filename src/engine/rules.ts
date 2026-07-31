@@ -1,5 +1,12 @@
 import { AweConfig } from './aweConfig';
-import { AttemptSignal, ConceptMastery, EngineAction, RuleResult } from './types';
+import {
+  AttemptSignal,
+  ConceptMastery,
+  EngineAction,
+  RuleResult,
+  SKIP_EASY_MAX,
+  SKIP_HARD_MIN,
+} from './types';
 import {
   recomputeScores,
   timeRatioOf,
@@ -40,6 +47,12 @@ export const initConceptMastery = (seed: {
   last10: [],
   skips: 0,
   consecutiveSkips: 0,
+  skipTimeTotal: 0,
+  skipTimeCount: 0,
+  skipDifficultyTotal: 0,
+  skipDifficultyCount: 0,
+  skipsEasy: 0,
+  skipsHard: 0,
   avgTimeRatio: null,
   timeCorrectTotal: 0,
   timeCorrectCount: 0,
@@ -98,6 +111,20 @@ export const applyAttempt = (
     m.skips += 1;
     m.consecutiveSkips += 1;
     m.consecutiveCorrect = 0; // a skip is not a success
+
+    // Record what kind of skip it was. Untimed skips contribute no duration
+    // rather than counting as zero, which would make giving up look instant.
+    const skipSeconds = signal.timeTakenSeconds;
+    if (typeof skipSeconds === 'number' && skipSeconds > 0) {
+      m.skipTimeTotal += skipSeconds;
+      m.skipTimeCount += 1;
+    }
+    if (typeof signal.difficulty === 'number' && signal.difficulty > 0) {
+      m.skipDifficultyTotal += signal.difficulty;
+      m.skipDifficultyCount += 1;
+      if (signal.difficulty <= SKIP_EASY_MAX) m.skipsEasy += 1;
+      else if (signal.difficulty >= SKIP_HARD_MIN) m.skipsHard += 1;
+    }
 
     const eligible = m.status === 'learning' || m.status === 'weak' || m.status === 'improving';
     if (

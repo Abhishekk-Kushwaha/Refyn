@@ -114,7 +114,8 @@
       "Bash(./node_modules/.bin/esbuild supabase/functions/daily-focus/index.ts --target=esnext --format=esm --outfile=\"C:/Users/Lenovo/AppData/Local/Temp/claude/D--Refyn/91416766-f2d5-4663-8344-02f2c6362a17/scratchpad/df.mjs\")",
       "Bash(echo \"tsc=$?\")",
       "Bash(timeout 300 npx vitest run --reporter=verbose src/engine/__tests__/timing.test.ts)",
-      "Bash(./node_modules/.bin/esbuild supabase/functions/daily-focus/index.ts --target=esnext --format=esm --outfile=\"C:/Users/Lenovo/AppData/Local/Temp/claude/D--Refyn/91416766-f2d5-4663-8344-02f2c6362a17/scratchpad/df4.mjs\")"
+      "Bash(./node_modules/.bin/esbuild supabase/functions/daily-focus/index.ts --target=esnext --format=esm --outfile=\"C:/Users/Lenovo/AppData/Local/Temp/claude/D--Refyn/91416766-f2d5-4663-8344-02f2c6362a17/scratchpad/df4.mjs\")",
+      "Bash(timeout 300 npx vitest run --reporter=verbose src/engine/__tests__/skipProfile.test.ts)"
     ]
   }
 }

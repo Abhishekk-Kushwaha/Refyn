@@ -5,6 +5,7 @@ import { SkeletonCard, Display, Eyebrow, StatBar, StatPill, ModeCard } from '@/c
 import { ErrorState, EmptyState, useToast } from '@/components/feedback';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
 import { useDailyFocus } from '@/hooks/useDailyFocus';
+import { useSkipInsights } from '@/hooks/useSkipInsights';
 import { useAuthStore } from '@/stores/authStore';
 import { useExamStore } from '@/stores/examStore';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -14,11 +15,14 @@ import { SubtopicWeakness } from '@/services/weakness.service';
 import { WeaknessRadar } from './components/WeaknessRadar';
 import { WeakTopicCard } from './components/WeakTopicCard';
 import { FocusCard } from './components/FocusCard';
+import { SkipPanel } from './components/SkipPanel';
 
 export const DashboardView = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { data, isLoading, error, refetch } = useWeaknessScores();
+  // Pure AWE — no network, no model. Renders as soon as the dashboard mounts.
+  const skips = useSkipInsights();
 
   const displayName = useAuthStore((state) => state.session?.user.displayName) ?? 'there';
   const examId = useExamStore((state) => state.selectedExamId) ?? 'cat';
@@ -171,6 +175,10 @@ export const DashboardView = () => {
             </div>
             <WeaknessRadar topics={data.topics} subtopics={data.subtopics} />
           </motion.section>
+
+          {/* Skip behaviour — engine-computed, renders itself away when there
+              is no pattern worth showing. */}
+          {skips.data && <SkipPanel data={skips.data} />}
 
           {/* Ranked weak topics */}
           <section>

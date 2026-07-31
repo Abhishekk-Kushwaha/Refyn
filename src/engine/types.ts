@@ -32,6 +32,19 @@ export interface ConceptMastery {
   skips: number;
   consecutiveSkips: number;
 
+  // What the skip actually looked like. A skip already reached the engine
+  // carrying its duration and the question's difficulty; both used to be
+  // discarded, which flattened every skip into the same event. Skipping a
+  // difficulty-2 question after ninety seconds is avoidance; skipping a
+  // difficulty-9 one instantly is good exam triage. Totals and counts, so
+  // averages stay exact and recombine across concepts.
+  skipTimeTotal: number; // seconds spent before giving up
+  skipTimeCount: number; // timed skips only
+  skipDifficultyTotal: number;
+  skipDifficultyCount: number;
+  skipsEasy: number; // difficulty <= SKIP_EASY_MAX
+  skipsHard: number; // difficulty >= SKIP_HARD_MIN
+
   // pacing — EWMA of timeTaken / expectedTime. Correct-but-slow is not mastery.
   avgTimeRatio: number | null;
 
@@ -134,10 +147,16 @@ export interface EngineMeta {
 }
 
 /** Bumped whenever the persisted shape changes; drives migrateState(). */
-// v3 added per-outcome raw timing (timeCorrect*/timeIncorrect*). Older
-// snapshots migrate cleanly — the fields default to zero, since those seconds
-// were never recorded and must not be invented.
-export const AWE_STATE_VERSION = 3;
+// v3 added per-outcome raw timing (timeCorrect*/timeIncorrect*). v4 added the
+// skip profile (skipTime*/skipDifficulty*/skipsEasy/skipsHard). Older
+// snapshots migrate cleanly — the fields default to zero, since none of it was
+// ever recorded and must not be invented.
+export const AWE_STATE_VERSION = 4;
+
+/** A skip at or below this difficulty is one they were expected to handle. */
+export const SKIP_EASY_MAX = 4;
+/** At or above this, skipping is defensible exam triage rather than avoidance. */
+export const SKIP_HARD_MIN = 7;
 
 export interface AweSnapshot {
   version: number;
