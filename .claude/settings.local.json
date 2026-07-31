@@ -106,7 +106,10 @@
       "Bash(grep -nE \"^\\(import|const|function|export|  //\\)|<h[12]|priority|weak|Weak\" src/features/dashboard/DashboardView.tsx)",
       "Bash(timeout 300 npx vitest run --reporter=dot)",
       "Bash(timeout 240 npx supabase functions deploy daily-focus --no-verify-jwt)",
-      "Bash(timeout 300 npx vite build)"
+      "Bash(timeout 300 npx vite build)",
+      "Bash(./node_modules/.bin/esbuild supabase/functions/daily-focus/index.ts --target=esnext --outfile=/dev/null)",
+      "Bash(sed -i 's/for \\(const max of \\\\[800, 1500\\\\]\\)/for \\(const max of [2500, 2500, 2500]\\)/' trunc.mjs)",
+      "Bash(grep -oE \"AIza[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]+\")"
     ]
   }
 }

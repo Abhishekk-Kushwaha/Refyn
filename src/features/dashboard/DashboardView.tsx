@@ -29,7 +29,15 @@ export const DashboardView = () => {
   // The engine's own ranking decides today's focus — subtopics arrive sorted
   // weakest-first. The AI only writes the prose explaining that choice.
   const focusSubtopic = data?.subtopics[0];
-  const focus = useDailyFocus(focusSubtopic, focusSubtopic?.frequencyWeight);
+  const attempted = data?.subtopics.reduce((sum, s) => sum + s.attempts, 0) ?? 0;
+  const focus = useDailyFocus(focusSubtopic, focusSubtopic?.frequencyWeight, {
+    overallAccuracy: attempted
+      ? Math.round(
+          data!.subtopics.reduce((sum, s) => sum + s.accuracy * s.attempts, 0) / attempted
+        )
+      : 0,
+    totalAttempts: data?.totalAttempts ?? 0,
+  });
 
   const handleDrill = async (subtopic: SubtopicWeakness) => {
     setDrillingId(subtopic.subtopicId);

@@ -1,28 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
-import { getDailyFocus, frequencyBandOf, FrequencyBand } from '@/services/dailyFocus.service';
+import {
+  getDailyFocus,
+  frequencyBandOf,
+  FrequencyBand,
+  FocusStats,
+} from '@/services/dailyFocus.service';
 import { SubtopicWeakness } from '@/services/weakness.service';
 
 /**
- * Coaching prose for the concept the engine picked.
+ * The learner's briefing for today.
  *
- * Cached hard on the client as well as the server: the message depends only on
- * (concept, band), so it cannot change until the learner's band actually
- * moves. Re-fetching on every dashboard mount would spend requests to render
- * identical text.
+ * Keyed on the date so it is fetched once per day and then reused: the server
+ * stores one row per learner per day, so every later login reads that row
+ * instead of calling a model. Cost tracks daily active users, not logins.
  */
 export const useDailyFocus = (
   subtopic: SubtopicWeakness | undefined,
-  frequencyWeight?: number
+  frequencyWeight: number | undefined,
+  stats: FocusStats
 ) => {
   const frequencyBand: FrequencyBand = frequencyBandOf(frequencyWeight);
+  const today = new Date().toDateString();
 
   return useQuery({
-    // Band is part of the key: when the learner improves out of 'weak' into
-    // 'improving', they should get the message for where they now are.
-    queryKey: ['daily-focus', subtopic?.subtopicId, subtopic?.band],
-    queryFn: () => getDailyFocus(subtopic!, frequencyBand),
+    queryKey: ['daily-focus', subtopic?.subtopicId, today],
+    queryFn: () => getDailyFocus(subtopic!, frequencyBand, stats),
     enabled: Boolean(subtopic),
-    staleTime: 1000 * 60 * 60, // an hour; the underlying text is immutable
+    // The briefing is written once a day; nothing it says changes in between.
+    staleTime: 1000 * 60 * 60 * 6,
     retry: false, // the service already degrades to fallback copy
   });
 };

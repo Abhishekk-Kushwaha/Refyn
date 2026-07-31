@@ -53,9 +53,25 @@ const FALLBACK: Record<WeaknessBand, string> = {
 /** Engine-only copy. Used when the coach endpoint is unset or fails. */
 export const fallbackMessage = (band: WeaknessBand): string => FALLBACK[band];
 
+/**
+ * The learner's own calendar date, not UTC's. A student in IST opening the app
+ * at 1am should get a new briefing, not yesterday's.
+ */
+const localDateString = (): string => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+export interface FocusStats {
+  overallAccuracy: number;
+  totalAttempts: number;
+}
+
 export const getDailyFocus = async (
   subtopic: SubtopicWeakness,
-  frequencyBand: FrequencyBand
+  frequencyBand: FrequencyBand,
+  stats: FocusStats
 ): Promise<DailyFocus> => {
   if (!isFocusCoachConfigured()) {
     return { message: fallbackMessage(subtopic.band), fromModel: false };
@@ -82,6 +98,13 @@ export const getDailyFocus = async (
         topicName: subtopic.topicName,
         band: subtopic.band,
         frequencyBand,
+        localDate: localDateString(),
+        // Stored server-side as tomorrow's comparison baseline, which is how
+        // "you pulled this up since last time" costs no extra model call.
+        conceptAccuracy: subtopic.accuracy,
+        conceptAttempts: subtopic.attempts,
+        overallAccuracy: stats.overallAccuracy,
+        totalAttempts: stats.totalAttempts,
       }),
     });
 
