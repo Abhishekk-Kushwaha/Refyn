@@ -37,6 +37,8 @@ export const DashboardView = () => {
         )
       : 0,
     totalAttempts: data?.totalAttempts ?? 0,
+    profile: data?.subtopics ?? [],
+    topics: data?.topics ?? [],
   });
 
   const handleDrill = async (subtopic: SubtopicWeakness) => {

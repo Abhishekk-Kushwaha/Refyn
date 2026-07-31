@@ -66,7 +66,29 @@ const localDateString = (): string => {
 export interface FocusStats {
   overallAccuracy: number;
   totalAttempts: number;
+  /** Every concept with signal, weakest first. */
+  profile: SubtopicWeakness[];
+  topics: { topicName: string; accuracy: number; attempts: number }[];
 }
+
+/**
+ * Compact per-concept payload. Short keys because this is stored as a JSONB
+ * snapshot per learner per day and diffed against tomorrow's.
+ */
+const toSnapshot = (s: SubtopicWeakness) => ({
+  k: s.subtopicId,
+  n: s.subtopicName,
+  t: s.topicName,
+  a: Math.round(s.accuracy),
+  at: s.attempts,
+  m: s.masteryScore,
+  s: s.status,
+  sk: s.skips || undefined,
+  tr: s.avgTimeRatio ?? undefined,
+  ro: s.timesReopened || undefined,
+  ci: s.consecutiveIncorrect || undefined,
+  vw: s.everWasVeryWeak || undefined,
+});
 
 export const getDailyFocus = async (
   subtopic: SubtopicWeakness,
@@ -105,6 +127,14 @@ export const getDailyFocus = async (
         conceptAttempts: subtopic.attempts,
         overallAccuracy: stats.overallAccuracy,
         totalAttempts: stats.totalAttempts,
+        // The whole profile, so the briefing can reason across concepts
+        // rather than through a single one.
+        concepts: stats.profile.map(toSnapshot),
+        topics: stats.topics.map((t) => ({
+          name: t.topicName,
+          accuracy: t.accuracy,
+          attempts: t.attempts,
+        })),
       }),
     });
 

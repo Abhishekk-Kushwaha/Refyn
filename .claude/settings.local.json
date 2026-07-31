@@ -110,7 +110,9 @@
       "Bash(./node_modules/.bin/esbuild supabase/functions/daily-focus/index.ts --target=esnext --outfile=/dev/null)",
       "Bash(sed -i 's/for \\(const max of \\\\[800, 1500\\\\]\\)/for \\(const max of [2500, 2500, 2500]\\)/' trunc.mjs)",
       "Bash(grep -oE \"AIza[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]+\")",
-      "Bash(timeout 300 npx vitest run --reporter=verbose src/services/__tests__/questions.service.test.ts)"
+      "Bash(timeout 300 npx vitest run --reporter=verbose src/services/__tests__/questions.service.test.ts)",
+      "Bash(./node_modules/.bin/esbuild supabase/functions/daily-focus/index.ts --target=esnext --format=esm --outfile=\"C:/Users/Lenovo/AppData/Local/Temp/claude/D--Refyn/91416766-f2d5-4663-8344-02f2c6362a17/scratchpad/df.mjs\")",
+      "Bash(echo \"tsc=$?\")"
     ]
   }
 }

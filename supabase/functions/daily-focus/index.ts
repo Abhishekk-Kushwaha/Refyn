@@ -54,7 +54,36 @@ interface FocusRequest {
   conceptAttempts?: number;
   overallAccuracy?: number;
   totalAttempts?: number;
+  /** The whole weakness profile, weakest first. */
+  concepts?: ConceptSnapshot[];
+  /** Section-level rollups, computed client-side from the same profile. */
+  topics?: TopicRollup[];
 }
+
+/** One concept's state. Keys are short because this is stored per user per day. */
+interface ConceptSnapshot {
+  k: string; // concept key
+  n: string; // name
+  t: string; // topic
+  a: number; // accuracy 0-100
+  at: number; // attempts
+  m: number; // mastery score 0-100
+  s: string; // status
+  sk?: number; // skips
+  tr?: number | null; // avg time ratio; >1 = correct but slow
+  ro?: number; // times reopened
+  ci?: number; // consecutive incorrect
+  vw?: boolean; // ever was very weak
+}
+
+interface TopicRollup {
+  name: string;
+  accuracy: number;
+  attempts: number;
+}
+
+/** How many concepts to describe. Beyond this the prompt stops earning its tokens. */
+const MAX_CONCEPTS_IN_PROMPT = 12;
 
 /** Yesterday's snapshot, used to describe what moved. */
 interface PriorFocus {
@@ -65,7 +94,53 @@ interface PriorFocus {
   concept_attempts: number | null;
   overall_accuracy: number | null;
   total_attempts: number | null;
+  snapshot: ConceptSnapshot[] | null;
 }
+
+/**
+ * What actually moved between two profiles.
+ *
+ * Computed here, in code, and handed to the model as finished statements.
+ * The model is asked to find patterns across these — never to derive them.
+ * Asking a language model to subtract percentages is how you get a confident
+ * wrong number in front of a student.
+ */
+interface ConceptDelta {
+  name: string;
+  topic: string;
+  accuracyChange: number;
+  attemptsAdded: number;
+}
+
+const diffProfiles = (
+  now: ConceptSnapshot[],
+  before: ConceptSnapshot[]
+): { improved: ConceptDelta[]; regressed: ConceptDelta[]; untouched: string[] } => {
+  const priorByKey = new Map(before.map((c) => [c.k, c]));
+  const improved: ConceptDelta[] = [];
+  const regressed: ConceptDelta[] = [];
+  const untouched: string[] = [];
+
+  for (const c of now) {
+    const p = priorByKey.get(c.k);
+    if (!p) continue; // new since last visit — not a change, just new
+    const accuracyChange = Math.round(c.a - p.a);
+    const attemptsAdded = Math.max(0, c.at - p.at);
+    if (attemptsAdded === 0) {
+      // Worth naming: a weak concept nobody touched is a different problem
+      // from one that was practised and still slipped.
+      if (c.s === 'weak' || c.s === 'very_weak') untouched.push(c.n);
+      continue;
+    }
+    const d: ConceptDelta = { name: c.n, topic: c.t, accuracyChange, attemptsAdded };
+    if (accuracyChange >= 5) improved.push(d);
+    else if (accuracyChange <= -5) regressed.push(d);
+  }
+
+  improved.sort((a, b) => b.accuracyChange - a.accuracyChange);
+  regressed.sort((a, b) => a.accuracyChange - b.accuracyChange);
+  return { improved, regressed, untouched };
+};
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -112,7 +187,7 @@ const readPrior = async (userId: string, date: string): Promise<PriorFocus | nul
     const url =
       `${SUPABASE_URL}/rest/v1/daily_focus` +
       `?user_id=eq.${encodeURIComponent(userId)}&focus_date=lt.${encodeURIComponent(date)}` +
-      `&select=focus_date,concept_key,concept_name,concept_accuracy,concept_attempts,overall_accuracy,total_attempts` +
+      `&select=focus_date,concept_key,concept_name,concept_accuracy,concept_attempts,overall_accuracy,total_attempts,snapshot` +
       `&order=focus_date.desc&limit=1`;
     const res = await fetch(url, { headers: restHeaders });
     if (!res.ok) return null;
@@ -166,7 +241,7 @@ here before - what their figures were last time.
 
 Rules:
 
-1. Write 2 to 3 sentences. Under 60 words total. This sits in a small card.
+1. Write 3 to 4 sentences. Under 80 words total. This sits in a small card.
 2. Use ONLY figures you are given. Never invent an accuracy, a score, or a
    count of papers. Rounding what you are given is fine. If a figure is
    absent, describe it qualitatively instead.
@@ -180,6 +255,33 @@ Rules:
    where they currently stand.
 6. Finish with one concrete action for today. Direct and encouraging, never
    patronising, never guilt-tripping, no false urgency.
+
+USING THE FULL PROFILE
+
+You are given every concept they have practised, section rollups, and a
+precomputed list of what rose and fell. Read across it and say the most
+useful true thing. Patterns worth surfacing when the data shows them:
+
+  * A whole section sagging, not just one concept.
+  * Something they fixed that has since come apart, especially a concept
+    marked as re-broken.
+  * A concept marked slow: they are getting it right but too slowly to
+    survive a real paper. That is a pacing problem, not a knowledge one, and
+    is worth naming as such.
+  * A weak concept they have been avoiding - high skips, or listed as not
+    practised since last time.
+  * Progress in one area while another slipped, when both appear.
+
+Constraints on this:
+
+  * Report only patterns visible in the data given. Never speculate about
+    causes you cannot see - time of day, mood, study habits, or anything
+    outside these numbers.
+  * All the arithmetic is already done. The rises and falls are given to you
+    as finished statements. Never compute your own.
+  * Pick ONE pattern - the most useful. This is a short card, not a report.
+  * A single weak concept with very few attempts is not yet a pattern. Say so
+    plainly rather than over-reading it.
 7. Address the learner as "you". Plain text only - no markdown, no LaTeX, no
    headings, no bullet points, no emoji.
 8. Do not greet and do not open with a bare label. Start with the substance.`;
@@ -223,6 +325,31 @@ const buildPrompt = (
   const overall = pct(r.overallAccuracy);
   if (overall) lines.push(`Their overall accuracy: ${overall} across ${r.totalAttempts ?? 0} questions.`);
 
+  // The whole profile, so the briefing can see across concepts rather than
+  // through a keyhole. Weakest first; capped so the prompt stays bounded.
+  if (r.concepts?.length) {
+    lines.push('');
+    lines.push(`FULL WEAKNESS PROFILE (${r.concepts.length} concepts practised, weakest first):`);
+    for (const c of r.concepts.slice(0, MAX_CONCEPTS_IN_PROMPT)) {
+      const bits = [`${c.a}% over ${c.at}`, `mastery ${c.m}`, c.s];
+      if (c.sk) bits.push(`${c.sk} skipped`);
+      // >1.15 means they get there, but too slowly to finish a real paper.
+      if (c.tr != null && c.tr > 1.15) bits.push(`slow (${c.tr.toFixed(1)}x expected time)`);
+      if (c.ro) bits.push(`re-broken ${c.ro}x`);
+      if (c.ci && c.ci >= 3) bits.push(`${c.ci} wrong in a row`);
+      lines.push(`  ${c.n} [${c.t}] - ${bits.join(', ')}`);
+    }
+    if (r.concepts.length > MAX_CONCEPTS_IN_PROMPT) {
+      lines.push(`  ...and ${r.concepts.length - MAX_CONCEPTS_IN_PROMPT} more, all stronger than these.`);
+    }
+  }
+
+  if (r.topics?.length) {
+    lines.push('');
+    lines.push('BY SECTION:');
+    for (const t of r.topics) lines.push(`  ${t.name}: ${t.accuracy}% over ${t.attempts} questions`);
+  }
+
   if (prior) {
     const gap = daysBetween(prior.focus_date, today);
     lines.push('');
@@ -248,6 +375,30 @@ const buildPrompt = (
     }
     if (prior.total_attempts != null && r.totalAttempts != null) {
       lines.push(`  Questions attempted since then: ${Math.max(0, r.totalAttempts - prior.total_attempts)}.`);
+    }
+
+    // Every concept that moved, not just today's focus. All subtraction done
+    // above in diffProfiles; these are finished facts, not raw material.
+    if (prior.snapshot?.length && r.concepts?.length) {
+      const { improved, regressed, untouched } = diffProfiles(r.concepts, prior.snapshot);
+      if (improved.length) {
+        lines.push('  WENT UP since then:');
+        for (const d of improved.slice(0, 5)) {
+          lines.push(`    ${d.name} [${d.topic}] up ${d.accuracyChange} points over ${d.attemptsAdded} new attempts`);
+        }
+      }
+      if (regressed.length) {
+        lines.push('  WENT DOWN since then:');
+        for (const d of regressed.slice(0, 5)) {
+          lines.push(`    ${d.name} [${d.topic}] down ${Math.abs(d.accuracyChange)} points over ${d.attemptsAdded} new attempts`);
+        }
+      }
+      if (untouched.length) {
+        lines.push(`  Still weak and NOT practised since: ${untouched.slice(0, 5).join(', ')}`);
+      }
+      if (!improved.length && !regressed.length) {
+        lines.push('  No concept moved by more than 5 points either way.');
+      }
     }
   } else {
     lines.push('');
@@ -379,6 +530,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       concept_attempts: body.conceptAttempts ?? null,
       overall_accuracy: body.overallAccuracy ?? null,
       total_attempts: body.totalAttempts ?? null,
+      // Stored whole, not truncated to MAX_CONCEPTS_IN_PROMPT: tomorrow's diff
+      // should see every concept that moved, including ones too strong to be
+      // worth describing today.
+      snapshot: body.concepts ?? null,
       message,
       model,
     });

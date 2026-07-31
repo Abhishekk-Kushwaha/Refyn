@@ -20,6 +20,18 @@ export interface SubtopicWeakness {
   lastAttemptedAt: string | null;
   /** How often the concept shows up in CAT: 1.3 very_high … 0.4 low. */
   frequencyWeight: number;
+
+  // Signals the dashboard does not render but the daily briefing reasons over.
+  /** 0–100. Rises slowly, falls fast — not the same as raw accuracy. */
+  masteryScore: number;
+  /** EWMA of timeTaken / expectedTime. >1 means correct-but-slow. */
+  avgTimeRatio: number | null;
+  /** How many times this concept has regressed after being fixed. */
+  timesReopened: number;
+  /** Sticky: true if it was ever in the worst band, even if fixed since. */
+  everWasVeryWeak: boolean;
+  /** Current wrong streak — a live signal that something just broke. */
+  consecutiveIncorrect: number;
 }
 
 export interface TopicWeakness {
@@ -66,6 +78,11 @@ export const getWeaknessSnapshot = async (examId: string): Promise<WeaknessSnaps
       status: m.status,
       lastAttemptedAt: m.lastAttemptAt,
       frequencyWeight: m.frequencyWeight,
+      masteryScore: Math.round(m.masteryScore),
+      avgTimeRatio: m.avgTimeRatio,
+      timesReopened: m.timesReopened,
+      everWasVeryWeak: m.everWasVeryWeak,
+      consecutiveIncorrect: m.consecutiveIncorrect,
     }))
     .sort((a, b) => b.weaknessScore - a.weaknessScore);
 
