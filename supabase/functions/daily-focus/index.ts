@@ -30,7 +30,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
-const UPSTREAM_TIMEOUT_MS = 20_000;
+// Choosing the concept with thinking turned up measures ~13s, and this runs
+// once per learner per day. A generous ceiling beats abandoning a good pick.
+const UPSTREAM_TIMEOUT_MS = 45_000;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -161,16 +163,19 @@ const restHeaders = {
 const cacheEnabled = Boolean(SUPABASE_URL && SERVICE_ROLE_KEY);
 
 /** Today's row, if the learner has already opened the app today. */
-const readToday = async (userId: string, date: string): Promise<string | null> => {
+const readToday = async (
+  userId: string,
+  date: string
+): Promise<{ message: string; concept_key: string; concept_name: string } | null> => {
   if (!cacheEnabled) return null;
   try {
     const url =
       `${SUPABASE_URL}/rest/v1/daily_focus` +
       `?user_id=eq.${encodeURIComponent(userId)}&focus_date=eq.${encodeURIComponent(date)}` +
-      `&select=message&limit=1`;
+      `&select=message,concept_key,concept_name&limit=1`;
     const res = await fetch(url, { headers: restHeaders });
     if (!res.ok) return null;
-    return (await res.json())?.[0]?.message ?? null;
+    return (await res.json())?.[0] ?? null;
   } catch (e) {
     console.error('daily read failed', e);
     return null;
@@ -232,12 +237,38 @@ const requireUser = async (req: Request): Promise<string | null> => {
   }
 };
 
-const SYSTEM_PROMPT = `You are a CAT quantitative aptitude coach writing the short
-briefing a learner sees once a day when they open the app.
+const SYSTEM_PROMPT = `You are a CAT quantitative aptitude coach. You do two jobs
+once a day, when the learner opens the app.
 
-You are told which concept the app's engine selected for today, their real
-figures on it, how often it appears in CAT papers, and - when they have been
-here before - what their figures were last time.
+JOB ONE - CHOOSE THE CONCEPT
+
+You are given their full profile. Choose the ONE concept they should work on
+today and return its exact key. Think it through properly before deciding;
+accuracy matters far more than speed here.
+
+Weigh these against each other rather than ranking on any single one:
+
+  * Score impact. A concept that appears in almost every CAT paper is worth
+    more than an equally weak one that rarely appears.
+  * Room to move. Something at very low accuracy with real attempts behind it
+    has more headroom than something already near mastery.
+  * Fragility. A concept marked re-broken has failed to stick before and may
+    need attention ahead of a first-time weakness.
+  * Pacing. A concept they answer correctly but far too slowly is a genuine
+    weakness even though accuracy looks healthy.
+  * Avoidance. Heavy skips, or a weak concept untouched since last time,
+    means the gap is not closing on its own.
+  * Evidence. A concept with only one or two attempts is barely measured. Do
+    not crown it the top weakness on that alone when a well-evidenced
+    weakness is available.
+  * Momentum. Something moving up may deserve one more session to lock in,
+    rather than being abandoned mid-climb.
+
+Choose from the supplied concepts ONLY. Never invent a concept name or key.
+
+JOB TWO - WRITE THE BRIEFING
+
+Write the briefing for the concept YOU chose above.
 
 Rules:
 
@@ -284,6 +315,16 @@ Constraints on this:
     plainly rather than over-reading it.
 7. Address the learner as "you". Plain text only - no markdown, no LaTeX, no
    headings, no bullet points, no emoji.
+8. Say, in passing, why this concept over the others - one clause is enough.
+   The learner should understand the choice, not just receive it.
+
+OUTPUT FORMAT
+
+Reply with JSON only, no code fence:
+
+  {"conceptKey": "<exact key of the concept you chose>", "message": "<the briefing>"}
+
+conceptKey must match one of the supplied keys character for character.
 8. Do not greet and do not open with a bare label. Start with the substance.`;
 
 const FREQUENCY_PHRASE: Record<FrequencyBand, string> = {
@@ -314,10 +355,12 @@ const buildPrompt = (
   today: string
 ): string => {
   const freq = r.frequencyBand ? FREQUENCY_PHRASE[r.frequencyBand] : 'appears in CAT papers';
+  // The engine's own top pick is offered as a reference point, not an
+  // instruction — the model is free to overrule it, and is told as much.
   const lines: string[] = [
-    `Today's concept: ${r.conceptName}${r.topicName ? ` (part of ${r.topicName})` : ''}`,
-    `CAT frequency: this concept ${freq}.`,
-    `Their level: it ${BAND_PHRASE[r.band]}.`,
+    `The engine's weakness ranking puts ${r.conceptName}` +
+      `${r.topicName ? ` (${r.topicName})` : ''} first. It ${BAND_PHRASE[r.band]},` +
+      ` and ${freq}. You may choose differently if the profile below justifies it.`,
   ];
 
   const acc = pct(r.conceptAccuracy);
@@ -325,22 +368,28 @@ const buildPrompt = (
   const overall = pct(r.overallAccuracy);
   if (overall) lines.push(`Their overall accuracy: ${overall} across ${r.totalAttempts ?? 0} questions.`);
 
-  // The whole profile, so the briefing can see across concepts rather than
-  // through a keyhole. Weakest first; capped so the prompt stays bounded.
+  // The candidate set. Every concept carries its key, because the model has
+  // to return one of these verbatim — it is choosing, not just describing.
   if (r.concepts?.length) {
     lines.push('');
-    lines.push(`FULL WEAKNESS PROFILE (${r.concepts.length} concepts practised, weakest first):`);
+    lines.push(
+      `CANDIDATE CONCEPTS (${r.concepts.length} practised, engine's weakness order). ` +
+        'Choose exactly one of these keys:'
+    );
     for (const c of r.concepts.slice(0, MAX_CONCEPTS_IN_PROMPT)) {
-      const bits = [`${c.a}% over ${c.at}`, `mastery ${c.m}`, c.s];
+      const bits = [`${c.a}% over ${c.at} attempts`, `mastery ${c.m}`, c.s];
       if (c.sk) bits.push(`${c.sk} skipped`);
       // >1.15 means they get there, but too slowly to finish a real paper.
       if (c.tr != null && c.tr > 1.15) bits.push(`slow (${c.tr.toFixed(1)}x expected time)`);
       if (c.ro) bits.push(`re-broken ${c.ro}x`);
       if (c.ci && c.ci >= 3) bits.push(`${c.ci} wrong in a row`);
-      lines.push(`  ${c.n} [${c.t}] - ${bits.join(', ')}`);
+      if (c.vw) bits.push('was once very weak');
+      lines.push(`  key="${c.k}" | ${c.n} [${c.t}] - ${bits.join(', ')}`);
     }
     if (r.concepts.length > MAX_CONCEPTS_IN_PROMPT) {
-      lines.push(`  ...and ${r.concepts.length - MAX_CONCEPTS_IN_PROMPT} more, all stronger than these.`);
+      lines.push(
+        `  (${r.concepts.length - MAX_CONCEPTS_IN_PROMPT} further concepts are stronger than all of these and are not candidates.)`
+      );
     }
   }
 
@@ -413,6 +462,29 @@ const buildPrompt = (
 /** Thrown when the model ran out of budget mid-sentence — see generate(). */
 class TruncatedError extends Error {}
 
+interface Choice {
+  conceptKey: string;
+  message: string;
+}
+
+/**
+ * Parses the model's JSON reply, tolerating a stray code fence.
+ * Returns null rather than throwing so the caller can fall back cleanly.
+ */
+const parseChoice = (raw: string): Choice | null => {
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  try {
+    const o = JSON.parse(cleaned);
+    if (typeof o?.conceptKey === 'string' && typeof o?.message === 'string') {
+      return { conceptKey: o.conceptKey.trim(), message: o.message.trim() };
+    }
+  } catch {
+    /* fall through */
+  }
+  console.error('could not parse model reply', cleaned.slice(0, 200));
+  return null;
+};
+
 /** Calls OpenRouter when configured, else Gemini directly. Returns [text, model]. */
 const generate = async (prompt: string, signal: AbortSignal): Promise<[string, string]> => {
   if (OPENROUTER_API_KEY) {
@@ -432,7 +504,8 @@ const generate = async (prompt: string, signal: AbortSignal): Promise<[string, s
         temperature: 0.6,
         // Reasoning models spend this budget before writing a word, so it has
         // to cover both. See the Gemini branch for the measurement.
-        max_tokens: 2500,
+        max_tokens: 6000,
+        response_format: { type: 'json_object' },
       }),
       signal,
     });
@@ -453,11 +526,13 @@ const generate = async (prompt: string, signal: AbortSignal): Promise<[string, s
         generationConfig: {
           temperature: 0.6,
           // Thinking tokens count against this and are spent BEFORE any
-          // output. Measured on this prompt: ~1,100 thinking tokens for a
-          // ~60 token briefing. At 800 the model burned 765 on thought and
-          // returned 31 tokens — a sentence cut in half. 2500 leaves room.
-          maxOutputTokens: 2500,
-          thinkingConfig: { thinkingLevel: 'low' },
+          // output, so the budget has to cover both. Choosing the concept is
+          // a judgement call across a dozen candidates, so thinking is turned
+          // up and the ceiling raised to match. This runs once per learner
+          // per day, and getting the choice right beats getting it fast.
+          maxOutputTokens: 6000,
+          thinkingConfig: { thinkingLevel: 'high' },
+          responseMimeType: 'application/json',
         },
       }),
       signal,
@@ -506,9 +581,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
       ? body.localDate
       : new Date().toISOString().slice(0, 10);
 
-  // Already briefed today — every further login today is free.
+  // Already briefed today — every further login today is free, and returns
+  // the SAME concept. That is what stops a refresh reshuffling the pick.
   const todays = await readToday(userId, today);
-  if (todays) return json({ message: todays, cached: true });
+  if (todays) {
+    return json({
+      message: todays.message,
+      conceptKey: todays.concept_key,
+      conceptName: todays.concept_name,
+      cached: true,
+    });
+  }
 
   const prior = await readPrior(userId, today);
 
@@ -516,18 +599,33 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const prompt = buildPrompt({ ...body, conceptKey, conceptName, band: body.band }, prior, today);
-    const [message, model] = await generate(prompt, controller.signal);
-    if (!message) return json({ error: 'Empty coaching message.' }, 502);
+    const [raw, model] = await generate(prompt, controller.signal);
+    const choice = parseChoice(raw);
+    if (!choice?.message) return json({ error: 'Empty coaching message.' }, 502);
+
+    // Trust the model's judgement, not its spelling. The key it returns must
+    // exist in the profile we sent; a hallucinated concept would render a card
+    // whose Drill button leads nowhere. On a miss we keep the engine's pick,
+    // which is always valid, rather than failing the whole briefing.
+    const chosen = body.concepts?.find((c) => c.k === choice.conceptKey);
+    if (!chosen && choice.conceptKey) {
+      console.error(
+        `model chose unknown concept key "${choice.conceptKey}" — falling back to engine pick "${conceptKey}"`
+      );
+    }
+    const finalKey = chosen?.k ?? conceptKey;
+    const finalName = chosen?.n ?? conceptName;
+    const message = choice.message;
 
     // user_id comes from the verified JWT, never from the request body.
     await writeToday({
       user_id: userId,
       focus_date: today,
-      concept_key: conceptKey,
-      concept_name: conceptName,
+      concept_key: finalKey,
+      concept_name: finalName,
       band: body.band,
-      concept_accuracy: body.conceptAccuracy ?? null,
-      concept_attempts: body.conceptAttempts ?? null,
+      concept_accuracy: chosen?.a ?? body.conceptAccuracy ?? null,
+      concept_attempts: chosen?.at ?? body.conceptAttempts ?? null,
       overall_accuracy: body.overallAccuracy ?? null,
       total_attempts: body.totalAttempts ?? null,
       // Stored whole, not truncated to MAX_CONCEPTS_IN_PROMPT: tomorrow's diff
@@ -538,7 +636,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
       model,
     });
 
-    return json({ message, cached: false, hadPrior: Boolean(prior) });
+    return json({
+      message,
+      conceptKey: finalKey,
+      conceptName: finalName,
+      // True when the model overruled the engine's ranking.
+      overrodeEngine: finalKey !== conceptKey,
+      cached: false,
+      hadPrior: Boolean(prior),
+    });
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === 'AbortError';
     // Truncated text is never written: generate() throws before writeToday, so

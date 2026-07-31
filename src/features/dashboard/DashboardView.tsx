@@ -26,11 +26,13 @@ export const DashboardView = () => {
 
   const [drillingId, setDrillingId] = useState<string | null>(null);
 
-  // The engine's own ranking decides today's focus — subtopics arrive sorted
-  // weakest-first. The AI only writes the prose explaining that choice.
-  const focusSubtopic = data?.subtopics[0];
+  // The engine's top-ranked concept is the starting point and the fallback.
+  // The model may pick a different one — it weighs CAT frequency, pacing,
+  // avoidance and how well-evidenced each weakness is, which weaknessScore
+  // alone does not capture.
+  const enginePick = data?.subtopics[0];
   const attempted = data?.subtopics.reduce((sum, s) => sum + s.attempts, 0) ?? 0;
-  const focus = useDailyFocus(focusSubtopic, focusSubtopic?.frequencyWeight, {
+  const focus = useDailyFocus(enginePick, enginePick?.frequencyWeight, {
     overallAccuracy: attempted
       ? Math.round(
           data!.subtopics.reduce((sum, s) => sum + s.accuracy * s.attempts, 0) / attempted
@@ -40,6 +42,14 @@ export const DashboardView = () => {
     profile: data?.subtopics ?? [],
     topics: data?.topics ?? [],
   });
+
+  // Resolve the model's choice back to a real subtopic. If it chose one we
+  // cannot find — or hasn't answered yet — the engine's pick stands, so the
+  // card and its Drill button always point at something drillable.
+  const focusSubtopic =
+    (focus.data?.conceptKey
+      ? data?.subtopics.find((s) => s.subtopicId === focus.data!.conceptKey)
+      : undefined) ?? enginePick;
 
   const handleDrill = async (subtopic: SubtopicWeakness) => {
     setDrillingId(subtopic.subtopicId);

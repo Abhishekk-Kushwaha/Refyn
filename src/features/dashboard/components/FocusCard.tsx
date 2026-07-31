@@ -36,34 +36,41 @@ export const FocusCard = ({
         Today&rsquo;s focus
       </span>
       <span className="font-body text-[0.6875rem] font-bold uppercase tracking-wider text-text-secondary">
-        {bandLabel[subtopic.band]}
+        {loading ? 'Analysing' : bandLabel[subtopic.band]}
       </span>
     </div>
 
-    <h2 className="font-semibold text-lg text-text-primary">{subtopic.subtopicName}</h2>
-
-    {/* The learner's real figures come from the engine and are rendered here,
-        never inside the coaching text — that text is shared across everyone in
-        the same band, so it has to stay free of personal numbers. */}
-    <p className="mt-0.5 font-body text-xs text-text-muted">
-      {subtopic.topicName} · {subtopic.accuracy}% accuracy · {subtopic.attempts} attempted
-    </p>
-
+    {/* Nothing about the concept is shown until the choice is final. The model
+        picks the concept, not just the prose, and it may overrule the engine —
+        rendering the engine's pick first would flash one topic and then swap
+        it for another, which reads as a glitch. */}
     {loading ? (
-      <div className="mt-3 space-y-2" aria-hidden>
+      <div className="mt-1 space-y-2" aria-hidden>
+        <div className="h-6 w-3/5 animate-pulse rounded bg-border" />
+        <div className="h-3 w-2/5 animate-pulse rounded bg-border" />
         <div className="h-3 w-full animate-pulse rounded bg-border" />
         <div className="h-3 w-4/5 animate-pulse rounded bg-border" />
       </div>
     ) : (
-      <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">{message}</p>
+      <>
+        <h2 className="font-semibold text-lg text-text-primary">{subtopic.subtopicName}</h2>
+
+        {/* Real figures come from the engine and are rendered here rather than
+            asked of the model, so they cannot be misremembered. */}
+        <p className="mt-0.5 font-body text-xs text-text-muted">
+          {subtopic.topicName} · {subtopic.accuracy}% accuracy · {subtopic.attempts} attempted
+        </p>
+
+        <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">{message}</p>
+      </>
     )}
 
     <button
       onClick={() => onDrill(subtopic)}
-      disabled={drilling}
+      disabled={drilling || loading}
       className="mt-4 w-full rounded-sm bg-accent px-4 py-2.5 font-body text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
     >
-      {drilling ? 'Loading…' : `Drill ${subtopic.subtopicName} →`}
+      {loading ? 'Picking your focus…' : drilling ? 'Loading…' : `Drill ${subtopic.subtopicName} →`}
     </button>
   </motion.section>
 );

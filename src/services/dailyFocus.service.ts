@@ -2,17 +2,19 @@ import { env } from '@/config/env';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabase/client';
 import { SubtopicWeakness, WeaknessBand } from '@/services/weakness.service';
 
-// The dashboard's "hit this hard today" line.
+// The dashboard's "hit this hard today" card.
 //
-// The AWE engine chooses the concept — it already ranks weakness from real
-// accuracy, recency and CAT frequency. This service only fetches the prose
-// that explains the choice, and it is deliberately allowed to fail: if the
-// endpoint is unset or unreachable, fallbackMessage() gives the card
-// something honest to say and the dashboard looks no different.
+// The model both CHOOSES the concept and writes the briefing. It receives the
+// learner's full profile — every concept with mastery, pacing, skips and
+// reopen history — and weighs CAT frequency, headroom, fragility and evidence
+// against each other, which a single weakness score cannot express. The
+// engine's own ranking is sent along as a reference point it may overrule.
 //
-// The returned text never contains the learner's own numbers. It is cached
-// server-side per (concept, band) and shared across every learner in that
-// state, so the card renders real accuracy and attempt counts separately.
+// The choice is stored once per day server-side, so it cannot change under
+// the learner on a refresh, and the whole thing is one request per day.
+//
+// Every failure path degrades to the engine's pick plus fallbackMessage(), so
+// the card is still useful when the endpoint is unset, slow or broken.
 
 export type FrequencyBand = 'low' | 'medium' | 'high' | 'very_high';
 
@@ -20,6 +22,13 @@ export interface DailyFocus {
   message: string;
   /** False when this came from the local fallback rather than the model. */
   fromModel: boolean;
+  /**
+   * The concept the model chose. May differ from the engine's top-ranked one —
+   * the model weighs CAT frequency, pacing, avoidance and evidence, not just
+   * weakness score. Null when we fell back, in which case the caller keeps the
+   * engine's pick.
+   */
+  conceptKey: string | null;
 }
 
 export const isFocusCoachConfigured = (): boolean => Boolean(env.aiFocusUrl);
@@ -96,7 +105,7 @@ export const getDailyFocus = async (
   stats: FocusStats
 ): Promise<DailyFocus> => {
   if (!isFocusCoachConfigured()) {
-    return { message: fallbackMessage(subtopic.band), fromModel: false };
+    return { message: fallbackMessage(subtopic.band), fromModel: false, conceptKey: null };
   }
 
   try {
@@ -138,14 +147,14 @@ export const getDailyFocus = async (
       }),
     });
 
-    if (!response.ok) return { message: fallbackMessage(subtopic.band), fromModel: false };
+    if (!response.ok) return { message: fallbackMessage(subtopic.band), fromModel: false, conceptKey: null };
 
-    const data = (await response.json()) as { message?: string };
-    if (!data.message) return { message: fallbackMessage(subtopic.band), fromModel: false };
+    const data = (await response.json()) as { message?: string; conceptKey?: string };
+    if (!data.message) return { message: fallbackMessage(subtopic.band), fromModel: false, conceptKey: null };
 
-    return { message: data.message, fromModel: true };
+    return { message: data.message, fromModel: true, conceptKey: data.conceptKey ?? null };
   } catch {
     // Coaching is decoration on top of a working dashboard. Never surface this.
-    return { message: fallbackMessage(subtopic.band), fromModel: false };
+    return { message: fallbackMessage(subtopic.band), fromModel: false, conceptKey: null };
   }
 };
