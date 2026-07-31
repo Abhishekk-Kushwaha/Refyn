@@ -42,7 +42,14 @@ export const DashboardView = () => {
   const handleDrill = async (subtopic: SubtopicWeakness) => {
     setDrillingId(subtopic.subtopicId);
     try {
-      const questions = await getQuestionsForSubtopic(examId, subtopic.subtopicId, 5);
+      // Name is passed as a fallback: engine state can hold a mock subtopic id
+      // from before the live pool loaded. See getQuestionsForSubtopic.
+      const questions = await getQuestionsForSubtopic(
+        examId,
+        subtopic.subtopicId,
+        5,
+        subtopic.subtopicName
+      );
       startSession(questions, 'topic', true);
       navigate('/practice/session');
     } catch (e) {

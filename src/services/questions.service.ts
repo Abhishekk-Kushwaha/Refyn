@@ -54,13 +54,32 @@ export const getQuestionsForPractice = async (
 export const getQuestionsForSubtopic = async (
   examId: string,
   subtopicId: string,
-  questionCount = 5
+  questionCount = 5,
+  subtopicName?: string
 ): Promise<MockQuestion[]> => {
   void examId;
   await delay(300);
 
   try {
-    const pool = getPool().filter((q) => q.subtopicId === subtopicId);
+    let pool = getPool().filter((q) => q.subtopicId === subtopicId);
+
+    // Fall back to matching on name when the id finds nothing.
+    //
+    // getPool() starts as the mock bank, whose subtopic ids are slugs like
+    // 'sub-pl', and only becomes real Supabase UUIDs once
+    // configureQuestionPoolSupabase resolves. Anything attempted before that
+    // — or in demo mode — leaves the AWE engine holding a mock id for a
+    // concept that the live pool keys by UUID, so drilling it would 404 even
+    // though the bank is full of those questions. Names survive the switch.
+    if (pool.length === 0 && subtopicName) {
+      pool = getPool().filter((q) => q.subtopicName === subtopicName);
+      if (pool.length > 0 && import.meta.env.DEV) {
+        console.warn(
+          `[questions] subtopic id "${subtopicId}" missed the pool; recovered ${pool.length} question(s) by name "${subtopicName}".`
+        );
+      }
+    }
+
     const selected = shuffle(pool).slice(0, questionCount);
 
     if (selected.length === 0) {
