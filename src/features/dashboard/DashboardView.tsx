@@ -16,6 +16,7 @@ import { WeaknessRadar } from './components/WeaknessRadar';
 import { WeakTopicCard } from './components/WeakTopicCard';
 import { FocusCard } from './components/FocusCard';
 import { SkipPanel } from './components/SkipPanel';
+import { TopicTimePanel } from './components/TopicTimePanel';
 
 export const DashboardView = () => {
   const navigate = useNavigate();
@@ -175,6 +176,10 @@ export const DashboardView = () => {
             </div>
             <WeaknessRadar topics={data.topics} subtopics={data.subtopics} />
           </motion.section>
+
+          {/* Pace per topic — engine-computed, hides itself until something
+              has been timed. */}
+          {data?.topics && <TopicTimePanel topics={data.topics} />}
 
           {/* Skip behaviour — engine-computed, renders itself away when there
               is no pattern worth showing. */}
