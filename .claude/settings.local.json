@@ -121,7 +121,9 @@
       "Bash(timeout 300 npx vitest run --reporter=verbose src/services/__tests__/weakness.service.test.ts)",
       "Bash(git commit -m 'Increase AI response timeout to 60 seconds *)",
       "Bash(pwd; echo *)",
-      "Bash(curl -s -i -X POST \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Content-Type: application/json\" -d '{\"questionText\":\"x\",\"correctAnswer\":\"1\"}' --max-time 30)"
+      "Bash(curl -s -i -X POST \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Content-Type: application/json\" -d '{\"questionText\":\"x\",\"correctAnswer\":\"1\"}' --max-time 30)",
+      "Bash(timeout 300 npx vitest run --reporter=dot src/components/ui/__tests__/MathText.test.tsx)",
+      "Bash(timeout 240 npx supabase functions deploy ai-explain --no-verify-jwt)"
     ]
   }
 }

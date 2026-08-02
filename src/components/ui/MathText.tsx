@@ -19,9 +19,48 @@ import { Fragment, ReactNode } from 'react';
 //   log10 2        -> log₁₀ 2   (subscripted base)
 //   log_2 x        -> log₂ x
 
-/** Characters that make an asterisk a multiplication sign rather than a bullet. */
-const isMathAdjacent = (ch: string | undefined): boolean =>
-  ch !== undefined && /[0-9A-Za-z)(\]]/.test(ch);
+// Deciding whether an asterisk means multiplication.
+//
+// "3^a * 12^a" and "x * y" are products; "note * see below" is a bullet. The
+// immediate neighbour cannot tell them apart once the author puts spaces
+// around the operator, so look at the whole adjacent token instead: a product
+// is flanked by operands — a number, a single-letter variable, or a bracket —
+// while prose is flanked by words.
+
+/** A number or a one-letter variable reads as something being multiplied. */
+const isOperand = (token: string): boolean =>
+  token.length > 0 && (/^[0-9]+$/.test(token) || token.length === 1);
+
+const tokenBefore = (s: string, end: number): string => {
+  let j = end;
+  while (j > 0 && /[0-9A-Za-z]/.test(s[j - 1])) j--;
+  return s.slice(j, end);
+};
+
+const tokenAfter = (s: string, start: number): string => {
+  let j = start;
+  while (j < s.length && /[0-9A-Za-z]/.test(s[j])) j++;
+  return s.slice(start, j);
+};
+
+/** Looks left from an asterisk, tolerating one space, for something multiplied. */
+const hasOperandLeft = (s: string, i: number): boolean => {
+  let j = i - 1;
+  if (s[j] === ' ') j--;
+  if (j < 0) return false;
+  if (s[j] === ')' || s[j] === ']') return true;
+  if (!/[0-9A-Za-z]/.test(s[j])) return false;
+  return isOperand(tokenBefore(s, j + 1));
+};
+
+const hasOperandRight = (s: string, i: number): boolean => {
+  let j = i + 1;
+  if (s[j] === ' ') j++;
+  if (j >= s.length) return false;
+  if (s[j] === '(' || s[j] === '[') return true;
+  if (!/[0-9A-Za-z]/.test(s[j])) return false;
+  return isOperand(tokenAfter(s, j));
+};
 
 /** An exponent run ends at the first character that cannot be part of it. */
 const isExponentChar = (ch: string): boolean => /[0-9A-Za-z.]/.test(ch);
@@ -53,7 +92,7 @@ export const parseMathText = (input: string): ReactNode[] => {
       continue;
     }
 
-    if (ch === '*' && isMathAdjacent(input[i - 1]) && isMathAdjacent(input[i + 1])) {
+    if (ch === '*' && hasOperandLeft(input, i) && hasOperandRight(input, i)) {
       buffer += '×';
       continue;
     }

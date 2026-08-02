@@ -255,8 +255,12 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
                     <SparkleIcon className="w-3 h-3" />
                     AI explanation
                   </div>
+                  {/* The model writes maths in the same plain-text shorthand
+                      the question bank uses, so it gets the same rendering the
+                      question above it does. whitespace-pre-line is inherited
+                      through the span, so the model's line breaks survive. */}
                   <p className="text-sm text-text-primary leading-relaxed whitespace-pre-line">
-                    {explanation}
+                    <MathText>{explanation}</MathText>
                   </p>
                 </div>
               )}

@@ -60,8 +60,22 @@ describe('MathText', () => {
   });
 
   it('does not turn a lone asterisk into a times sign', () => {
-    // Not flanked by maths, so it is not multiplication.
+    // Flanked by words, so it is a bullet rather than multiplication.
     expect(render('note * see below')).toContain('*');
+    expect(render('items * and more')).toContain('*');
+  });
+
+  // The AI explanation writes products with spaces around the operator.
+  it('converts a spaced asterisk between operands', () => {
+    expect(render('G = sqrt(x * y)')).toContain('x × y');
+    expect(render('G = sqrt(3^a * 12^a)')).toContain('×');
+    expect(render('(3 * 12)')).toContain('3 × 12');
+  });
+
+  it('handles the reported AI explanation lines', () => {
+    expect(render('log_3(x) = a ⇒ x = 3^a')).toContain('log<sub>3</sub>');
+    expect(render('G = (36^(1/2))^a')).toContain('<sup>a</sup>');
+    expect(render('log_b(b^k) = k')).toContain('log<sub>b</sub>');
   });
 
   it('leaves a caret with nothing after it as written', () => {
