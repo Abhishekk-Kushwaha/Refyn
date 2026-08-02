@@ -35,9 +35,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
-// Gemini can stall; we would rather fail fast and let the learner retry than
-// hold the request open until the platform kills it.
-const UPSTREAM_TIMEOUT_MS = 25_000;
+// AI can take time to think and generate good explanations. 60 second timeout
+// gives enough time for models to reason before answering.
+const UPSTREAM_TIMEOUT_MS = 60_000;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
