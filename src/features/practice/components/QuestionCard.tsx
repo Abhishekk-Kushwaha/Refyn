@@ -1,5 +1,5 @@
 import { MockQuestion } from '@/lib/mockQuestions';
-import { Input } from '@/components/ui';
+import { Input, MathText } from '@/components/ui';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
@@ -31,7 +31,7 @@ export const QuestionCard = ({
 
       {/* Question text */}
       <p className="text-lg text-text-primary leading-relaxed mb-6">
-        {question.questionText}
+        <MathText>{question.questionText}</MathText>
       </p>
 
       {/* MCQ options */}
@@ -59,7 +59,9 @@ export const QuestionCard = ({
                 >
                   {key}
                 </span>
-                <span className="flex-1">{question.options![key]}</span>
+                <span className="flex-1">
+                  <MathText>{question.options![key]}</MathText>
+                </span>
               </motion.button>
             );
           })}

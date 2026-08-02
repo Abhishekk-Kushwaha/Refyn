@@ -1,0 +1,122 @@
+import { Fragment, ReactNode } from 'react';
+
+// Renders the plain-text maths the question bank is written in.
+//
+// Questions are stored as text, so an option reads literally as
+// "(1003)*2^15 − 3". The caret, the asterisk and "sqrt" are authoring
+// shorthand, not something a learner should have to decode mid-exam.
+//
+// Deliberately not a LaTeX renderer: the bank is not written in LaTeX, and
+// pulling in a maths typesetting library to superscript a few exponents would
+// cost more than it returns. This handles the three notations that actually
+// appear in the data and leaves everything else untouched.
+//
+//   x^2            -> x²        (superscript run)
+//   3^(n+1)        -> 3ⁿ⁺¹      (parenthesised exponent, parens dropped)
+//   10^-3          -> 10⁻³      (signed exponent)
+//   (997)*2^14     -> (997)×2¹⁴ (multiplication sign)
+//   4sqrt6         -> 4√6
+
+/** Characters that make an asterisk a multiplication sign rather than a bullet. */
+const isMathAdjacent = (ch: string | undefined): boolean =>
+  ch !== undefined && /[0-9A-Za-z)(\]]/.test(ch);
+
+/** An exponent run ends at the first character that cannot be part of it. */
+const isExponentChar = (ch: string): boolean => /[0-9A-Za-z.]/.test(ch);
+
+export const parseMathText = (input: string): ReactNode[] => {
+  const nodes: ReactNode[] = [];
+  let buffer = '';
+  let key = 0;
+
+  const flush = () => {
+    if (buffer) {
+      nodes.push(buffer);
+      buffer = '';
+    }
+  };
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+
+    // sqrt -> √, but only as a whole word so "sqrts" or a variable named
+    // "sqrtx" is not mangled.
+    if (
+      (ch === 's' || ch === 'S') &&
+      input.slice(i, i + 4).toLowerCase() === 'sqrt' &&
+      !/[A-Za-z]/.test(input[i - 1] ?? '')
+    ) {
+      buffer += '√';
+      i += 3;
+      continue;
+    }
+
+    if (ch === '*' && isMathAdjacent(input[i - 1]) && isMathAdjacent(input[i + 1])) {
+      buffer += '×';
+      continue;
+    }
+
+    if (ch === '^') {
+      // Parenthesised exponent: take the balanced group and drop the parens,
+      // so 3^(n+1) reads as 3ⁿ⁺¹ the way it would be printed.
+      if (input[i + 1] === '(') {
+        let depth = 0;
+        let j = i + 1;
+        for (; j < input.length; j++) {
+          if (input[j] === '(') depth++;
+          else if (input[j] === ')') {
+            depth--;
+            if (depth === 0) break;
+          }
+        }
+        if (depth === 0 && j > i + 1) {
+          const inner = input.slice(i + 2, j);
+          flush();
+          nodes.push(<sup key={key++}>{parseMathText(inner)}</sup>);
+          i = j;
+          continue;
+        }
+        // Unbalanced — fall through and treat the caret as literal text.
+      }
+
+      // Bare exponent, optionally signed: 10^-3, x^2, 2^15.
+      let j = i + 1;
+      if (input[j] === '-' || input[j] === '−' || input[j] === '+') j++;
+      const start = j;
+      while (j < input.length && isExponentChar(input[j])) j++;
+      if (j > start) {
+        flush();
+        nodes.push(<sup key={key++}>{input.slice(i + 1, j)}</sup>);
+        i = j - 1;
+        continue;
+      }
+
+      // A caret with nothing usable after it stays as written.
+      buffer += ch;
+      continue;
+    }
+
+    buffer += ch;
+  }
+
+  flush();
+  return nodes;
+};
+
+interface MathTextProps {
+  children: string | null | undefined;
+  className?: string;
+}
+
+/** Inline maths-aware text. Renders nothing for empty input. */
+export const MathText = ({ children, className }: MathTextProps) => {
+  if (!children) return null;
+  const parsed = parseMathText(children);
+  return (
+    <span className={className}>
+      {parsed.map((node, i) => (
+        <Fragment key={i}>{node}</Fragment>
+      ))}
+    </span>
+  );
+};

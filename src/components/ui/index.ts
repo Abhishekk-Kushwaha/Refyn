@@ -14,3 +14,4 @@ export { ModeCard } from './ModeCard';
 export { TopicTile, TopicTileRow, type TopicTone } from './TopicTile';
 export { ProgressRail, type RailStep } from './ProgressRail';
 export { SectionHeader, SectionAction } from './SectionHeader';
+export { MathText, parseMathText } from './MathText';

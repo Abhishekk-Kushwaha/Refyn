@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { MockQuestion } from '@/lib/mockQuestions';
 import { AnswerRecord } from '@/stores/sessionStore';
 import { getErrorMessage } from '@/lib/errors';
+import { MathText } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import {
   AI_SIGN_IN_MESSAGE,
@@ -117,7 +118,7 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
         </span>
         <span className="flex-1 min-w-0">
           <span className={clsx('block text-sm text-text-primary', !isOpen && 'truncate')}>
-            {question.questionText}
+            <MathText>{question.questionText}</MathText>
           </span>
           <span className="flex items-center gap-2 mt-1.5">
             <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', statusClass)}>
@@ -143,7 +144,7 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
             <div className="px-4 pb-4 pt-1 border-t border-border">
               {/* Full question text (header truncates it) */}
               <p className="text-sm text-text-primary leading-relaxed mt-3 mb-4">
-                {question.questionText}
+                <MathText>{question.questionText}</MathText>
               </p>
 
               {/* MCQ options with correct / chosen markers */}
@@ -167,7 +168,7 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
                         <span className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold uppercase flex-shrink-0">
                           {key}
                         </span>
-                        <span className="flex-1">{question.options![key]}</span>
+                        <span className="flex-1"><MathText>{question.options![key]}</MathText></span>
                         {isRight && <span className="text-xs font-semibold text-success">Correct</span>}
                         {isChosen && !isRight && (
                           <span className="text-xs font-semibold text-danger">Your answer</span>
@@ -204,7 +205,7 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
                   Solution
                 </div>
                 <p className="text-sm text-text-primary leading-relaxed whitespace-pre-line">
-                  {question.solution || 'A written solution has not been added for this question yet.'}
+                  <MathText>{question.solution || 'A written solution has not been added for this question yet.'}</MathText>
                 </p>
               </div>
 
