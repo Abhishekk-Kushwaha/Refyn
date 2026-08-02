@@ -116,7 +116,9 @@
       "Bash(timeout 300 npx vitest run --reporter=verbose src/engine/__tests__/timing.test.ts)",
       "Bash(./node_modules/.bin/esbuild supabase/functions/daily-focus/index.ts --target=esnext --format=esm --outfile=\"C:/Users/Lenovo/AppData/Local/Temp/claude/D--Refyn/91416766-f2d5-4663-8344-02f2c6362a17/scratchpad/df4.mjs\")",
       "Bash(timeout 300 npx vitest run --reporter=verbose src/engine/__tests__/skipProfile.test.ts)",
-      "Bash(timeout 300 npx vitest run --reporter=verbose src/components/ui/__tests__/MathText.test.tsx)"
+      "Bash(timeout 300 npx vitest run --reporter=verbose src/components/ui/__tests__/MathText.test.tsx)",
+      "Bash(sed -i \"s/it\\('leaves the engine's own objects unmutated'/it\\('leaves the engine own objects unmutated'/\" src/services/__tests__/weakness.service.test.ts)",
+      "Bash(timeout 300 npx vitest run --reporter=verbose src/services/__tests__/weakness.service.test.ts)"
     ]
   }
 }

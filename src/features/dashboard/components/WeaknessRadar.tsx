@@ -62,6 +62,18 @@ export const WeaknessRadar = ({ topics, subtopics = [] }: WeaknessRadarProps) =>
       : topicAxes.slice(0, MAX_AXES)
   );
 
+  // Scale the axis to the data, not to the theoretical 0–100.
+  //
+  // weaknessScore is confidence-damped: a concept with one attempt scores
+  // about 12 even when every answer was wrong, and 30 attempts at a third
+  // correct only reaches the low 70s. Against a fixed [0, 100] axis a real
+  // profile collapsed into an unreadable blob around the centre — the chart
+  // looked empty. Scaling to the peak keeps the shape legible at any level,
+  // with a floor so a genuinely light profile does not get magnified into
+  // looking catastrophic.
+  const peak = Math.max(...data.map((d) => d.score), 0);
+  const axisMax = Math.max(25, Math.ceil((peak * 1.15) / 5) * 5);
+
   if (data.length < MIN_AXES) {
     const touched = Math.max(topicAxes.length, subtopics.length);
     return (
@@ -88,10 +100,11 @@ export const WeaknessRadar = ({ topics, subtopics = [] }: WeaknessRadarProps) =>
             dataKey="topic"
             tick={{ fill: colors.muted, fontSize: 12 }}
           />
-          <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+          <PolarRadiusAxis domain={[0, axisMax]} tick={false} axisLine={false} />
           <Radar
             dataKey="score"
             stroke={colors.accent}
+            strokeWidth={2}
             fill={colors.accent}
             fillOpacity={0.35}
             isAnimationActive
