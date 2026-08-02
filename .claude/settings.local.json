@@ -119,7 +119,9 @@
       "Bash(timeout 300 npx vitest run --reporter=verbose src/components/ui/__tests__/MathText.test.tsx)",
       "Bash(sed -i \"s/it\\('leaves the engine's own objects unmutated'/it\\('leaves the engine own objects unmutated'/\" src/services/__tests__/weakness.service.test.ts)",
       "Bash(timeout 300 npx vitest run --reporter=verbose src/services/__tests__/weakness.service.test.ts)",
-      "Bash(git commit -m 'Increase AI response timeout to 60 seconds *)"
+      "Bash(git commit -m 'Increase AI response timeout to 60 seconds *)",
+      "Bash(pwd; echo *)",
+      "Bash(curl -s -i -X POST \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Content-Type: application/json\" -d '{\"questionText\":\"x\",\"correctAnswer\":\"1\"}' --max-time 30)"
     ]
   }
 }
