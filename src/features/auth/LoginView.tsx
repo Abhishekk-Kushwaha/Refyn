@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { Button, Input } from '@/components/ui';
+import { BrandMark, Button, Icon, Input } from '@/components/ui';
 import { useToast } from '@/components/feedback';
 import { isSupabaseConfigured } from '@/services/supabase/client';
 import { getErrorMessage } from '@/lib/errors';
@@ -45,111 +45,200 @@ export const LoginView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
-      >
-        {/* Logo */}
+    <div className="relative min-h-screen bg-bg lg:grid lg:grid-cols-[1.1fr_1fr]">
+      <div className="app-aurora" aria-hidden="true" />
+      <div className="app-grid" aria-hidden="true" />
+
+      {/* ---- Brand panel (desktop only) ------------------------------- */}
+      <aside className="relative z-10 hidden flex-col justify-between border-r border-border p-12 lg:flex xl:p-16">
+        <div className="flex items-center gap-3">
+          <BrandMark size={34} />
+          <span className="font-display text-lg font-bold tracking-[-0.02em] text-text-primary">
+            Refyn
+          </span>
+        </div>
+
         <motion.div
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="text-center mb-8"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-xl"
         >
-          <div className="text-5xl font-display font-bold bg-gradient-to-r from-accent to-amber-400 bg-clip-text text-transparent mb-2">
-            REFYN
-          </div>
-          <p className="text-text-secondary">Hunt your weakness. Own the exam.</p>
+          <h1 className="font-display text-[3.25rem] font-bold leading-[1.02] tracking-[-0.04em] text-text-primary xl:text-[3.75rem]">
+            Hunt your weakness.
+            <br />
+            <span className="text-gradient">Own the exam.</span>
+          </h1>
+
+          <p className="mt-6 max-w-lg font-body text-base leading-relaxed text-text-secondary">
+            Refyn ranks every concept you touch by how badly it is costing you marks, then keeps
+            feeding you the ones that matter. No streak theatre — just an engine that knows where
+            you are losing.
+          </p>
+
+          <ul className="mt-10 space-y-4">
+            {[
+              {
+                title: 'Adaptive weakness engine',
+                body: 'Every attempt re-ranks your profile in real time.',
+              },
+              {
+                title: 'Pacing that gets measured',
+                body: 'Time spent on wrong answers is tracked separately from right ones.',
+              },
+              {
+                title: 'Spaced repetition, automatic',
+                body: 'Cards queue themselves the moment a concept starts slipping.',
+              },
+            ].map((item) => (
+              <li key={item.title} className="flex gap-3">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent-subtle text-accent">
+                  <Icon name="check" size={12} strokeWidth={3} />
+                </span>
+                <span>
+                  <span className="block font-body text-sm font-semibold text-text-primary">
+                    {item.title}
+                  </span>
+                  <span className="block font-body text-[0.8125rem] text-text-muted">
+                    {item.body}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </motion.div>
 
-        {/* Card */}
-        <motion.form
-          onSubmit={handleSubmit}
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-surface rounded-lg p-8 shadow-lg space-y-6"
+        <p className="font-body text-xs text-text-faint">
+          Built for CAT quant. Works offline in demo mode.
+        </p>
+      </aside>
+
+      {/* ---- Form panel ----------------------------------------------- */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10 sm:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-[420px]"
         >
-          <div>
-            <h2 className="text-2xl font-semibold text-text-primary mb-2">
-              {isSignup ? 'Create Account' : 'Welcome Back'}
-            </h2>
-            <p className="text-text-muted text-sm">
-              {isSignup
-                ? 'Sign up to start hunting your weak spots'
-                : 'Sign in to continue your learning journey'}
+          {/* Mobile brand — the desktop panel already carries this. */}
+          <div className="mb-8 flex flex-col items-center text-center lg:hidden">
+            <BrandMark size={44} className="mb-4" />
+            <h1 className="font-display text-3xl font-bold tracking-[-0.03em] text-text-primary">
+              Refyn
+            </h1>
+            <p className="mt-1.5 font-body text-sm text-text-secondary">
+              Hunt your weakness. Own the exam.
             </p>
           </div>
 
-          <Input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading || !isSupabaseConfigured}
-            label="Email"
-          />
-
-          <Input
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading || !isSupabaseConfigured}
-            label="Password"
-          />
-
-          <Button
-            type="submit"
-            fullWidth
-            loading={loading}
-            size="lg"
-            disabled={!isSupabaseConfigured || !email.trim() || !password.trim()}
+          <motion.form
+            onSubmit={handleSubmit}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.08 }}
+            className="space-y-5 rounded-2xl border border-border bg-surface-glass p-7 shadow-xl backdrop-blur-xl sm:p-8"
           >
-            {isSignup ? 'Create Account' : 'Sign In'}
-          </Button>
+            <div>
+              <h2 className="font-display text-[1.625rem] font-bold tracking-[-0.03em] text-text-primary">
+                {isSignup ? 'Create account' : 'Welcome back'}
+              </h2>
+              <p className="mt-1.5 font-body text-sm text-text-muted">
+                {isSignup
+                  ? 'Sign up to start hunting your weak spots.'
+                  : 'Sign in to pick up where the engine left off.'}
+              </p>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignup(!isSignup);
-              setPassword('');
-            }}
-            className="w-full text-sm text-accent hover:text-accent-hover transition-colors"
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading || !isSupabaseConfigured}
+              label="Email"
+              autoComplete="email"
+            />
+
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading || !isSupabaseConfigured}
+              label="Password"
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+            />
+
+            <Button
+              type="submit"
+              fullWidth
+              loading={loading}
+              size="lg"
+              disabled={!isSupabaseConfigured || !email.trim() || !password.trim()}
+            >
+              {isSignup ? 'Create account' : 'Sign in'}
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignup(!isSignup);
+                setPassword('');
+              }}
+              className="w-full font-body text-[0.8125rem] text-text-muted transition-colors hover:text-accent"
+            >
+              {isSignup ? (
+                <>
+                  Already have an account? <span className="font-semibold text-accent">Sign in</span>
+                </>
+              ) : (
+                <>
+                  Don&rsquo;t have an account?{' '}
+                  <span className="font-semibold text-accent">Sign up</span>
+                </>
+              )}
+            </button>
+
+            {!isSupabaseConfigured && (
+              <p className="rounded-lg border border-danger/25 bg-danger-subtle px-3 py-2 text-center font-body text-xs text-danger">
+                Supabase keys missing — real sign-in is disabled in this build.
+              </p>
+            )}
+          </motion.form>
+
+          {/* Explore without auth (demo mode) */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+            className="mt-6 text-center"
           >
-            {isSignup ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-          </button>
+            <div className="mb-5 flex items-center gap-3">
+              <span className="h-px flex-1 bg-border" />
+              <span className="font-body text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-text-faint">
+                or
+              </span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
 
-          {!isSupabaseConfigured && (
-            <p className="text-xs text-danger text-center">
-              Supabase keys missing — real sign-in is disabled in this build.
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              fullWidth
+              trailingIcon="arrowRight"
+              onClick={handleSkip}
+            >
+              Explore in demo mode
+            </Button>
+
+            <p className="mt-4 font-body text-xs leading-relaxed text-text-faint">
+              Demo mode keeps everything on this device. Sign in to sync for real.
             </p>
-          )}
-        </motion.form>
-
-        {/* Explore without auth (demo mode) */}
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25 }}
-          type="button"
-          onClick={handleSkip}
-          className="w-full mt-4 py-2 text-sm text-text-muted hover:text-accent transition-colors"
-        >
-          Skip for now — explore the app →
-        </motion.button>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-center mt-6 text-xs text-text-muted"
-        >
-          <p>Demo mode keeps everything on this device. Sign in to sync for real.</p>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 };

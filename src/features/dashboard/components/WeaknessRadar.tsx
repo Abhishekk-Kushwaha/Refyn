@@ -30,14 +30,18 @@ const MAX_AXES = 8;
 // flips so the chart re-colors with everything else.
 const useTokenColors = () => {
   const theme = useThemeStore((state) => state.theme);
-  const [colors, setColors] = useState({ accent: '#f59e0b', muted: '#71717a', grid: '#27272a' });
+  // Fallbacks mirror the dark-theme token values, so a failed lookup degrades
+  // to the right palette rather than to the old amber one.
+  const [colors, setColors] = useState({ accent: '#6366f1', muted: '#6e6e87', grid: '#282836' });
 
   useEffect(() => {
     const styles = getComputedStyle(document.documentElement);
     setColors({
-      accent: styles.getPropertyValue('--accent').trim() || '#f59e0b',
-      muted: styles.getPropertyValue('--text-muted').trim() || '#71717a',
-      grid: styles.getPropertyValue('--border').trim() || '#27272a',
+      accent: styles.getPropertyValue('--accent').trim() || '#6366f1',
+      muted: styles.getPropertyValue('--text-muted').trim() || '#6e6e87',
+      // border-strong, not border: the base border token is a 7%-alpha
+      // hairline, which all but disappears as a chart grid.
+      grid: styles.getPropertyValue('--border-strong').trim() || '#363647',
     });
   }, [theme]);
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Button, Textarea, SkeletonCard } from '@/components/ui';
+import { Button, Icon, Textarea, SkeletonCard } from '@/components/ui';
 import { ErrorState, useToast } from '@/components/feedback';
 import {
   getDoubtThread,
@@ -83,7 +83,7 @@ export const DoubtThreadView = () => {
 
   if (isLoading) {
     return (
-      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6 space-y-3">
+      <div className="mx-auto w-full max-w-[820px] flex-1 space-y-3 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -105,12 +105,13 @@ export const DoubtThreadView = () => {
   const ownCredibility = getOwnCredibility(doubt.conceptId);
 
   return (
-    <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
+    <div className="mx-auto w-full max-w-[820px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <button
         onClick={() => navigate('/board')}
-        className="text-text-muted hover:text-text-primary text-sm mb-4 transition-colors"
+        className="-ml-2 mb-6 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-body text-[0.8125rem] font-medium text-text-muted transition-colors hover:bg-surface-raised hover:text-text-primary"
       >
-        ← Back to board
+        <Icon name="arrowLeft" size={15} />
+        Back to board
       </button>
 
       {/* The doubt */}

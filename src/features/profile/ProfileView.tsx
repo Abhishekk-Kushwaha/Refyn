@@ -4,7 +4,8 @@ import { aweEngine } from '@/engine/engine';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Display } from '@/components/ui';
+import { Button, Icon, Panel, PanelHeader, StatCard } from '@/components/ui';
+import { Page, PageHeader, PageGrid } from '@/components/layout';
 import { useToast } from '@/components/feedback';
 import { motion } from 'framer-motion';
 
@@ -49,179 +50,195 @@ export const ProfileView = () => {
         )
       : 0;
 
+  const displayName = session?.user.displayName || session?.user.email?.split('@')[0] || 'Student';
+  const hasStats = weaknessData && weaknessData.totalAttempts > 0;
+
   return (
-    <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Display as="h1" size="md">
-          Profile
-        </Display>
-        <p className="mt-2 font-body text-sm text-text-secondary">
-          Your stats, settings, and account info
-        </p>
-      </motion.div>
+    <Page width="default">
+      <PageHeader
+        eyebrow="Account"
+        title="Profile"
+        description="Your stats, exam timeline, and app settings."
+      />
 
-      {/* Account Info */}
+      {/* ---- Identity card ------------------------------------------- */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-6"
+        transition={{ duration: 0.35 }}
+        className="mb-5"
       >
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Info</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-text-muted mb-1">Name</p>
-              <p className="text-text-primary font-medium">{session?.user.displayName || 'Not set'}</p>
+        <Panel elevation="md" className="relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-accent-soft"
+            aria-hidden="true"
+          />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
+            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-accent font-display text-2xl font-bold text-white shadow-glow-soft">
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate font-display text-xl font-bold tracking-[-0.025em] text-text-primary">
+                {displayName}
+              </h2>
+              <p className="mt-0.5 truncate font-body text-sm text-text-muted">
+                {session?.user.email || 'No email on file'}
+              </p>
+
+              {isDemo && (
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning-subtle px-2.5 py-1 font-body text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-warning">
+                  <Icon name="alert" size={11} />
+                  Demo mode — progress stays on this device
+                </span>
+              )}
             </div>
-            <div>
-              <p className="text-sm text-text-muted mb-1">Email</p>
-              <p className="text-text-primary font-medium">{session?.user.email || 'Not available'}</p>
-            </div>
-            {isDemo && (
-              <div className="bg-warning/10 border border-warning/30 rounded p-3">
-                <p className="text-sm text-warning">
-                  You're in demo mode. Sign in to sync your progress across devices.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+            <Button variant="secondary" icon="logout" onClick={handleLogout} className="sm:ml-auto">
+              Sign out
+            </Button>
+          </div>
+        </Panel>
       </motion.div>
 
-      {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="mb-6"
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Stats</CardTitle>
-            <CardDescription>Based on your practice sessions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                <div className="h-10 bg-surface-raised rounded animate-pulse" />
-                <div className="h-10 bg-surface-raised rounded animate-pulse" />
-              </div>
-            ) : weaknessData && weaknessData.totalAttempts > 0 ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-surface-raised rounded p-4">
-                  <p className="text-sm text-text-muted mb-2">Total Attempts</p>
-                  <p className="text-2xl font-semibold text-accent">
-                    {weaknessData.totalAttempts}
-                  </p>
-                </div>
-                <div className="bg-surface-raised rounded p-4">
-                  <p className="text-sm text-text-muted mb-2">Accuracy</p>
-                  <p className="text-2xl font-semibold text-success">{overallAccuracy}%</p>
-                </div>
-                <div className="bg-surface-raised rounded p-4">
-                  <p className="text-sm text-text-muted mb-2">Topics</p>
-                  <p className="text-2xl font-semibold text-text-primary">
-                    {weaknessData.topics.length}
-                  </p>
-                </div>
-                <div className="bg-surface-raised rounded p-4">
-                  <p className="text-sm text-text-muted mb-2">Concepts</p>
-                  <p className="text-2xl font-semibold text-text-primary">
-                    {weaknessData.subtopics.length}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-text-muted mb-4">Complete a practice session to see your stats here</p>
-                <Button onClick={() => navigate('/practice')} size="sm">
-                  Start Practicing
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* ---- Stats ---------------------------------------------------- */}
+      {isLoading ? (
+        <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton h-28 rounded-xl" />
+          ))}
+        </div>
+      ) : hasStats ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5"
+        >
+          <StatCard
+            label="Attempted"
+            value={weaknessData.totalAttempts}
+            icon="practice"
+            tone="accent"
+          />
+          <StatCard
+            label="Accuracy"
+            value={overallAccuracy}
+            unit="%"
+            icon="trend"
+            tone={overallAccuracy >= 70 ? 'success' : 'default'}
+          />
+          <StatCard label="Sections" value={weaknessData.topics.length} icon="layers" />
+          <StatCard label="Concepts" value={weaknessData.subtopics.length} icon="spark" />
+        </motion.div>
+      ) : (
+        <Panel className="mb-5 text-center">
+          <p className="mb-4 font-body text-sm text-text-muted">
+            Complete a practice session to see your stats here.
+          </p>
+          <Button onClick={() => navigate('/practice')}>Start practising</Button>
+        </Panel>
+      )}
 
-      {/* Settings */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mb-6"
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* ---- Settings -------------------------------------------------- */}
+      <PageGrid className="items-start">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
+          className="lg:col-span-6"
+        >
+          <Panel className="h-full">
+            <PanelHeader icon="calendar" title="Exam timeline" />
+
             {/* Exam date — this is what opens the pre-CAT revival window (R009).
                 Without it the engine records `everWasVeryWeak` forever and can
                 never act on it, because daysToExam is always null. */}
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-text-primary font-medium">Exam date</p>
-                <p className="text-sm text-text-muted">
-                  {examDate
-                    ? daysToExam !== null && daysToExam >= 0
-                      ? `${daysToExam} days to go — old weak spots revive in the last 30`
-                      : 'Date has passed'
-                    : 'Set it to revive old weak spots before the exam'}
-                </p>
-              </div>
+            <div className="flex flex-col gap-3">
+              <label
+                htmlFor="exam-date"
+                className="font-body text-sm font-semibold text-text-primary"
+              >
+                Exam date
+              </label>
               <input
+                id="exam-date"
                 type="date"
                 value={examDate ?? ''}
                 onChange={(e) => handleExamDateChange(e.target.value)}
-                className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-                aria-label="Exam date"
+                className="w-full rounded-lg border border-border bg-surface-raised px-3.5 py-2.5 font-body text-sm text-text-primary transition-colors hover:border-border-strong focus-visible:border-accent"
               />
+              <p className="font-body text-xs leading-relaxed text-text-muted">
+                {examDate
+                  ? daysToExam !== null && daysToExam >= 0
+                    ? `${daysToExam} days to go — old weak spots revive in the final 30.`
+                    : 'That date has passed. Set a new one to re-arm the revival window.'
+                  : 'Set it and the engine revives previously weak concepts in the last 30 days before your exam.'}
+              </p>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-text-primary font-medium">Theme</p>
-                <p className="text-sm text-text-muted">Dark mode</p>
+            {examDate && daysToExam !== null && daysToExam >= 0 && (
+              <div className="mt-5 border-t border-border pt-4">
+                <div className="flex items-baseline justify-between">
+                  <span className="font-body text-[0.8125rem] text-text-muted">Days remaining</span>
+                  <span className="font-display text-2xl font-bold tabular-nums text-accent">
+                    {daysToExam}
+                  </span>
+                </div>
               </div>
-              <button
-                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                  theme === 'dark' ? 'bg-accent' : 'bg-border'
+            )}
+          </Panel>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.15 }}
+          className="lg:col-span-6"
+        >
+          <Panel className="h-full">
+            <PanelHeader icon="settings" title="Preferences" />
+
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              role="switch"
+              aria-checked={theme === 'dark'}
+              className="flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-surface-raised p-4 text-left transition-colors hover:border-border-strong"
+            >
+              <span className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface text-text-muted">
+                  <Icon name={theme === 'dark' ? 'moon' : 'sun'} size={17} />
+                </span>
+                <span>
+                  <span className="block font-body text-sm font-semibold text-text-primary">
+                    Appearance
+                  </span>
+                  <span className="block font-body text-xs text-text-muted">
+                    {theme === 'dark' ? 'Dark' : 'Light'} theme
+                  </span>
+                </span>
+              </span>
+
+              <span
+                className={`flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition-colors ${
+                  theme === 'dark' ? 'justify-end bg-accent' : 'justify-start bg-border-strong'
                 }`}
               >
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                    theme === 'dark' ? 'translate-x-7' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+              </span>
+            </button>
 
-      {/* Danger Zone */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <Card borderColor="danger">
-          <CardHeader>
-            <CardTitle>Sign Out</CardTitle>
-            <CardDescription>End your session</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={handleLogout} variant="danger" fullWidth>
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
+            <div className="mt-5 border-t border-border pt-4">
+              <p className="mb-3 font-body text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-text-muted">
+                Session
+              </p>
+              <Button variant="danger" icon="logout" fullWidth onClick={handleLogout}>
+                Sign out
+              </Button>
+            </div>
+          </Panel>
+        </motion.div>
+      </PageGrid>
+    </Page>
   );
 };

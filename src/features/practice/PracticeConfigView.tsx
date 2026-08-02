@@ -1,37 +1,47 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button, Display, Eyebrow, ModeCard } from '@/components/ui';
-import { ErrorState } from '@/components/feedback';
-import { useToast } from '@/components/feedback';
+import clsx from 'clsx';
+import { Button, Icon, Panel, PanelHeader } from '@/components/ui';
+import { Page, PageHeader, PageGrid, Section } from '@/components/layout';
+import { ErrorState, useToast } from '@/components/feedback';
 import { getQuestionsForPractice, PracticeConfig } from '@/services/questions.service';
 import { getPool } from '@/services/questionPool';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useExamStore } from '@/stores/examStore';
 import { getErrorMessage } from '@/lib/errors';
 import { aweEngine } from '@/engine/engine';
-import clsx from 'clsx';
+import type { IconName } from '@/components/ui';
 
 type Mode = 'daily' | 'mock' | 'topic';
 
-const modeOptions: { id: Mode; label: string; description: string; meta: string[] }[] = [
+const modeOptions: {
+  id: Mode;
+  label: string;
+  description: string;
+  meta: string[];
+  icon: IconName;
+}[] = [
   {
     id: 'daily',
     label: 'Smart Quiz',
     description: 'Adaptive blend of weak concepts, revision, and fresh material.',
     meta: ['Adaptive', '70/20/10'],
+    icon: 'spark',
   },
   {
     id: 'mock',
     label: 'Mixed Practice',
     description: 'Random questions sampled evenly across all topics.',
     meta: ['Balanced', 'Random'],
+    icon: 'layers',
   },
   {
     id: 'topic',
     label: 'Topic Drill',
     description: 'Focus deeply on one specific topic until confident.',
     meta: ['Focused', 'Custom'],
+    icon: 'practice',
   },
 ];
 
@@ -55,6 +65,8 @@ export const PracticeConfigView = () => {
   const [topicFilter, setTopicFilter] = useState<string>(topicNames[0] ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedMode = modeOptions.find((m) => m.id === mode)!;
 
   const handleStart = async () => {
     setLoading(true);
@@ -92,104 +104,208 @@ export const PracticeConfigView = () => {
     return <ErrorState message={error} onRetry={() => setError(null)} className="min-h-screen" />;
   }
 
+  // Rough pacing estimate, so the summary says something the mode cards don't.
+  const estimatedMinutes = Math.max(1, Math.round((questionCount * 90) / 60));
+
   return (
-    <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="mb-8">
-          <Eyebrow className="mb-2 text-accent">Configure</Eyebrow>
-          <Display size="lg">Start practice</Display>
-          <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">
-            Pick a mode, set your preferences, and dive in.
-          </p>
-        </div>
+    <Page width="wide">
+      <PageHeader
+        eyebrow="Configure"
+        title="Start practice"
+        description="Pick a mode, set the length, and the engine composes the set."
+      />
 
-        {/* Mode selection using ModeCard */}
-        <section className="mb-8">
-          <Eyebrow className="mb-3 text-text-muted">Practice mode</Eyebrow>
-          <div className="space-y-3">
-            {modeOptions.map((opt) => (
-              <ModeCard
-                key={opt.id}
-                title={opt.label}
-                description={opt.description}
-                meta={opt.meta}
-                tone={mode === opt.id ? 'accent' : undefined}
-                onClick={() => setMode(opt.id)}
-              />
-            ))}
-          </div>
-        </section>
+      <PageGrid className="items-start">
+        {/* ---- Configuration column ------------------------------------ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="space-y-8 lg:col-span-7 xl:col-span-8"
+        >
+          <Section title="Practice mode">
+            {/* Modes were a vertical stack of full-width cards. On desktop
+                they read as three peers side by side. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {modeOptions.map((opt) => {
+                const active = mode === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setMode(opt.id)}
+                    aria-pressed={active}
+                    className={clsx(
+                      'group relative flex flex-col overflow-hidden rounded-xl border p-4 text-left lg:p-5',
+                      'transition-[border-color,background,transform,box-shadow] duration-200 ease-out-expo',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+                      active
+                        ? 'border-accent bg-accent-subtle shadow-glow-soft'
+                        : 'border-border bg-surface hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md'
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        'mb-3.5 grid h-9 w-9 place-items-center rounded-lg transition-colors',
+                        active
+                          ? 'bg-gradient-accent text-white'
+                          : 'bg-surface-raised text-text-muted group-hover:text-text-secondary'
+                      )}
+                    >
+                      <Icon name={opt.icon} size={17} strokeWidth={2.25} />
+                    </span>
 
-        {/* Topic picker (only in topic mode) */}
-        {mode === 'topic' && (
-          <section className="mb-8">
-            <Eyebrow className="mb-3 text-text-muted">Select topic</Eyebrow>
-            <div className="grid grid-cols-2 gap-2">
-              {topicNames.map((topic) => (
+                    <span className="font-heading text-base font-semibold tracking-[-0.015em] text-text-primary">
+                      {opt.label}
+                    </span>
+
+                    <span className="mt-1.5 flex-1 font-body text-[0.8125rem] leading-relaxed text-text-secondary">
+                      {opt.description}
+                    </span>
+
+                    <span className="mt-3.5 flex flex-wrap gap-1.5">
+                      {opt.meta.map((m) => (
+                        <span
+                          key={m}
+                          className={clsx(
+                            'rounded-md px-2 py-1 font-body text-[0.625rem] font-bold uppercase tracking-[0.1em]',
+                            active
+                              ? 'bg-accent-muted text-accent'
+                              : 'bg-surface-raised text-text-faint'
+                          )}
+                        >
+                          {m}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+
+          {/* Topic picker (only in topic mode) */}
+          {mode === 'topic' && (
+            <Section title="Select topic">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                {topicNames.map((topic) => (
+                  <button
+                    key={topic}
+                    onClick={() => setTopicFilter(topic)}
+                    aria-pressed={topicFilter === topic}
+                    className={clsx(
+                      'rounded-lg border px-3 py-2.5 text-center font-body text-[0.8125rem] font-medium transition-colors',
+                      topicFilter === topic
+                        ? 'border-accent bg-accent text-accent-text'
+                        : 'border-border bg-surface text-text-secondary hover:border-border-strong hover:text-text-primary'
+                    )}
+                  >
+                    {topic}
+                  </button>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          <Section title="Number of questions">
+            <div className="grid grid-cols-4 gap-2 sm:max-w-md">
+              {questionCounts.map((count) => (
                 <button
-                  key={topic}
-                  onClick={() => setTopicFilter(topic)}
+                  key={count}
+                  onClick={() => setQuestionCount(count)}
+                  aria-pressed={questionCount === count}
                   className={clsx(
-                    'rounded-lg border transition-all py-2.5 px-3 text-center font-body text-sm font-medium',
-                    topicFilter === topic
+                    'rounded-lg border py-3 font-body text-sm font-bold tabular-nums transition-colors',
+                    questionCount === count
                       ? 'border-accent bg-accent text-accent-text'
-                      : 'border-border text-text-secondary hover:border-border-strong'
+                      : 'border-border bg-surface text-text-secondary hover:border-border-strong hover:text-text-primary'
                   )}
                 >
-                  {topic}
+                  {count}
                 </button>
               ))}
             </div>
-          </section>
-        )}
+          </Section>
 
-        {/* Question count */}
-        <section className="mb-8">
-          <Eyebrow className="mb-3 text-text-muted">Number of questions</Eyebrow>
-          <div className="flex gap-2">
-            {questionCounts.map((count) => (
-              <button
-                key={count}
-                onClick={() => setQuestionCount(count)}
+          <Section title="Options">
+            <button
+              onClick={() => setIsTimed(!isTimed)}
+              role="switch"
+              aria-checked={isTimed}
+              className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-border-strong sm:max-w-md"
+            >
+              <span className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-raised text-text-muted">
+                  <Icon name="clock" size={17} />
+                </span>
+                <span>
+                  <span className="block font-body text-sm font-semibold text-text-primary">
+                    Timed session
+                  </span>
+                  <span className="block font-body text-xs text-text-muted">
+                    Track time per question
+                  </span>
+                </span>
+              </span>
+
+              <span
                 className={clsx(
-                  'flex-1 py-2.5 rounded-lg border font-body font-semibold text-sm transition-all',
-                  questionCount === count
-                    ? 'border-accent bg-accent text-accent-text'
-                    : 'border-border text-text-secondary hover:border-border-strong'
+                  'flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition-colors',
+                  isTimed ? 'justify-end bg-accent' : 'justify-start bg-border-strong'
                 )}
               >
-                {count}
-              </button>
-            ))}
-          </div>
-        </section>
+                <motion.span
+                  layout
+                  transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+                  className="h-5 w-5 rounded-full bg-white shadow-sm"
+                />
+              </span>
+            </button>
+          </Section>
+        </motion.div>
 
-        {/* Timed toggle */}
-        <section className="mb-10">
-          <button
-            onClick={() => setIsTimed(!isTimed)}
-            className="w-full flex items-center justify-between rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-strong"
-          >
-            <div className="text-left">
-              <div className="font-body font-semibold text-text-primary">Timed Session</div>
-              <div className="font-body text-xs text-text-muted">Track time per question</div>
-            </div>
-            <div
-              className={clsx(
-                'flex h-7 w-12 items-center rounded-full px-1 transition-colors',
-                isTimed ? 'justify-end bg-accent' : 'justify-start bg-border'
-              )}
+        {/* ---- Sticky launch panel ------------------------------------- */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.06 }}
+          className="lg:sticky lg:top-8 lg:col-span-5 xl:col-span-4"
+        >
+          <Panel glass elevation="lg" tone="accent">
+            <PanelHeader icon="bolt" title="Session summary" />
+
+            <dl className="space-y-3.5">
+              <SummaryRow label="Mode" value={selectedMode.label} />
+              {mode === 'topic' && <SummaryRow label="Topic" value={topicFilter || '—'} />}
+              <SummaryRow label="Questions" value={String(questionCount)} />
+              <SummaryRow label="Timing" value={isTimed ? 'Timed' : 'Untimed'} />
+              <SummaryRow label="Est. length" value={`~${estimatedMinutes} min`} />
+            </dl>
+
+            <p className="mt-5 border-t border-border pt-4 font-body text-xs leading-relaxed text-text-faint">
+              {selectedMode.description}
+            </p>
+
+            <Button
+              size="lg"
+              fullWidth
+              loading={loading}
+              onClick={handleStart}
+              trailingIcon={loading ? undefined : 'arrowRight'}
+              className="mt-5"
             >
-              <motion.div layout className="h-5 w-5 rounded-full bg-white shadow-md" />
-            </div>
-          </button>
-        </section>
-
-        {/* Start button */}
-        <Button size="lg" fullWidth loading={loading} onClick={handleStart}>
-          {loading ? 'Starting…' : `Start · ${questionCount} questions`}
-        </Button>
-      </motion.div>
-    </div>
+              {loading ? 'Starting…' : 'Start session'}
+            </Button>
+          </Panel>
+        </motion.div>
+      </PageGrid>
+    </Page>
   );
 };
+
+const SummaryRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex items-baseline justify-between gap-4">
+    <dt className="font-body text-[0.8125rem] text-text-muted">{label}</dt>
+    <dd className="truncate font-body text-[0.8125rem] font-semibold text-text-primary">{value}</dd>
+  </div>
+);

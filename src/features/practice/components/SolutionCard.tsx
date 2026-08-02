@@ -97,34 +97,42 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
   };
 
   return (
-    <div
-      className={clsx(
-        'bg-surface rounded-lg border-l-4 overflow-hidden',
-        status === 'correct'
-          ? 'border-l-success'
-          : status === 'wrong'
-          ? 'border-l-danger'
-          : 'border-l-border-strong'
-      )}
-    >
+    <div className="relative overflow-hidden rounded-xl border border-border bg-surface">
+      <span
+        className={clsx(
+          'absolute inset-y-0 left-0 w-[3px]',
+          status === 'correct'
+            ? 'bg-success'
+            : status === 'wrong'
+            ? 'bg-danger'
+            : 'bg-border-strong'
+        )}
+        aria-hidden="true"
+      />
+
       {/* Header — always visible, toggles the solution */}
       <button
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
-        className="w-full text-left p-4 flex items-start gap-3 hover:bg-surface-raised transition-colors"
+        className="flex w-full items-start gap-3 p-4 pl-5 text-left transition-colors hover:bg-surface-raised"
       >
-        <span className="text-xs font-bold text-text-muted font-mono mt-0.5 flex-shrink-0">
+        <span className="mt-0.5 flex-shrink-0 font-mono text-xs font-bold tabular-nums text-text-faint">
           Q{index + 1}
         </span>
         <span className="flex-1 min-w-0">
           <span className={clsx('block text-sm text-text-primary', !isOpen && 'truncate')}>
             <MathText>{question.questionText}</MathText>
           </span>
-          <span className="flex items-center gap-2 mt-1.5">
-            <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', statusClass)}>
+          <span className="mt-2 flex items-center gap-2">
+            <span
+              className={clsx(
+                'rounded-full px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em]',
+                statusClass
+              )}
+            >
               {statusLabel}
             </span>
-            <span className="text-[10px] text-text-muted">{question.subtopicName}</span>
+            <span className="text-[0.6875rem] text-text-faint">{question.subtopicName}</span>
           </span>
         </span>
         <span className="text-text-muted flex-shrink-0 mt-0.5">
@@ -141,7 +149,7 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 pt-1 border-t border-border">
+            <div className="border-t border-border px-4 pb-4 pl-5 pt-1">
               {/* Full question text (header truncates it) */}
               <p className="text-sm text-text-primary leading-relaxed mt-3 mb-4">
                 <MathText>{question.questionText}</MathText>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { Button } from '@/components/ui';
+import { BrandMark, Button } from '@/components/ui';
 import { motion } from 'framer-motion';
 
 type Step = 'exam' | 'weak-areas' | 'daily-target';
@@ -44,34 +44,48 @@ export const OnboardingView = () => {
   const stepNumber = step === 'exam' ? 1 : step === 'weak-areas' ? 2 : 3;
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center px-4 py-8">
+    <div className="relative flex min-h-screen items-center justify-center bg-bg px-4 py-10">
+      <div className="app-aurora" aria-hidden="true" />
+      <div className="app-grid" aria-hidden="true" />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         key={step}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-md"
+        className="relative z-10 w-full max-w-lg"
       >
+        <div className="mb-8 flex items-center justify-center gap-2.5">
+          <BrandMark size={26} />
+          <span className="font-display text-[0.9375rem] font-bold tracking-[-0.02em] text-text-primary">
+            Refyn
+          </span>
+        </div>
+
         {/* Progress bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-semibold text-text-primary">Step {stepNumber} of 3</span>
-            <span className="text-xs text-text-muted">
-              {step === 'exam' && 'Exam Selection'}
-              {step === 'weak-areas' && 'Weak Areas'}
-              {step === 'daily-target' && 'Daily Target'}
+        <div className="mb-6">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-body text-[0.8125rem] font-semibold text-text-primary">
+              Step {stepNumber} of 3
+            </span>
+            <span className="font-body text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-text-muted">
+              {step === 'exam' && 'Exam selection'}
+              {step === 'weak-areas' && 'Weak areas'}
+              {step === 'daily-target' && 'Daily target'}
             </span>
           </div>
-          <div className="w-full bg-border rounded-full h-2">
-            <div
-              className="bg-accent h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(stepNumber / 3) * 100}%` }}
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+            <motion.div
+              className="h-full rounded-full bg-gradient-accent"
+              initial={false}
+              animate={{ width: `${(stepNumber / 3) * 100}%` }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             />
           </div>
         </div>
 
         {/* Card */}
-        <div className="bg-surface rounded-lg p-8 shadow-lg space-y-6">
+        <div className="space-y-6 rounded-2xl border border-border bg-surface-glass p-7 shadow-xl backdrop-blur-xl sm:p-8">
           {/* Step 1: Exam Selection */}
           {step === 'exam' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">

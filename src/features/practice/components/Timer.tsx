@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import clsx from 'clsx';
+import { Icon } from '@/components/ui';
 
 export interface TimerHandle {
   getElapsedSeconds: () => number;
@@ -45,12 +46,19 @@ export const Timer = forwardRef<TimerHandle, TimerProps>(({ warnAtSeconds, class
   return (
     <div
       className={clsx(
-        'font-mono font-bold text-lg px-3 py-1.5 rounded-md transition-colors',
-        isWarning ? 'bg-danger-subtle text-danger' : 'bg-surface-raised text-text-primary',
+        'inline-flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors',
+        isWarning
+          ? 'border-danger/30 bg-danger-subtle text-danger'
+          : 'border-border bg-surface-raised text-text-primary',
         className
       )}
+      role="timer"
+      aria-label={`Elapsed time ${mm} minutes ${ss} seconds`}
     >
-      ⏱️ {mm}:{ss}
+      <Icon name="clock" size={15} className={isWarning ? 'text-danger' : 'text-text-faint'} />
+      <span className="font-mono text-base font-bold tabular-nums tracking-tight">
+        {mm}:{ss}
+      </span>
     </div>
   );
 });

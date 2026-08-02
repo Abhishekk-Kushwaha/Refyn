@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui';
+import clsx from 'clsx';
+import { Button, Panel, PanelHeader, StatCard } from '@/components/ui';
+import { Page, PageGrid, Section } from '@/components/layout';
 import { EmptyState } from '@/components/feedback';
 import { useSessionStore } from '@/stores/sessionStore';
 import { persistSession, AttemptRecord } from '@/services/sessions.service';
@@ -136,172 +138,233 @@ export const PracticeReviewView = () => {
     navigate(destination);
   };
 
+  const verdict =
+    stats.accuracy >= 85
+      ? 'Sharp session'
+      : stats.accuracy >= 70
+      ? 'Well done'
+      : stats.accuracy >= 45
+      ? 'Solid effort'
+      : 'Plenty to hunt';
+
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center px-4 py-8">
-      <div className="max-w-2xl w-full">
-        {/* Celebration */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          <div className="text-5xl mb-2">{stats.accuracy >= 70 ? '🎉' : '💪'}</div>
-          <h1 className="text-2xl font-semibold text-text-primary">
-            {stats.accuracy >= 70 ? 'Well done!' : 'Good effort!'}
-          </h1>
-        </motion.div>
+    <div className="relative min-h-screen bg-bg">
+      <div className="app-aurora" aria-hidden="true" />
+      <div className="app-grid" aria-hidden="true" />
 
-        {/* Accuracy ring */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="flex justify-center mb-8"
-        >
-          <div className="relative w-40 h-40">
-            <svg className="w-40 h-40 -rotate-90" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="54" fill="none" stroke="var(--border)" strokeWidth="10" />
-              <motion.circle
-                cx="60"
-                cy="60"
-                r="54"
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                initial={{ strokeDashoffset: circumference }}
-                animate={{ strokeDashoffset: strokeOffset }}
-                transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+      <div className="relative z-10">
+        <Page width="wide">
+          {/* ---- Hero: ring + headline + numbers ---------------------- */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mb-6"
+          >
+            <Panel elevation="lg" tone="accent" className="relative overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-accent-soft"
+                aria-hidden="true"
               />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-text-primary">{stats.accuracy}%</span>
-              <span className="text-xs text-text-muted">accuracy</span>
-            </div>
-          </div>
-        </motion.div>
 
-        {/* Summary stats */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="grid grid-cols-2 gap-3 mb-8"
-        >
-          <div className="bg-surface rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-text-primary">
-              {stats.correctCount}/{stats.total}
-            </div>
-            <div className="text-xs text-text-muted mt-1">Correct</div>
-          </div>
-          <div className="bg-surface rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-text-primary font-mono">
-              {Math.floor(stats.avgTime / 60)}m {stats.avgTime % 60}s
-            </div>
-            <div className="text-xs text-text-muted mt-1">Avg time/Q</div>
-          </div>
-        </motion.div>
-
-        {/* Topic breakdown */}
-        <div className="mb-8">
-          <h4 className="text-text-muted text-xs font-semibold tracking-widest uppercase mb-3">
-            By Topic
-          </h4>
-          <div className="space-y-2">
-            {stats.topics.map((topic, i) => {
-              const pct = Math.round((topic.correct / topic.total) * 100);
-              const borderColor = pct >= 70 ? 'success' : pct >= 40 ? undefined : 'danger';
-              return (
-                <motion.div
-                  key={topic.topicName}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + i * 0.05 }}
-                  className={`bg-surface rounded-lg p-4 flex items-center justify-between border-l-4 ${
-                    borderColor === 'success'
-                      ? 'border-l-success'
-                      : borderColor === 'danger'
-                      ? 'border-l-danger'
-                      : 'border-l-accent'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium text-text-primary">{topic.topicName}</div>
-                    <div className="text-xs text-text-muted">
-                      {topic.correct}/{topic.total} correct
-                    </div>
+              <div className="relative flex flex-col items-center gap-7 lg:flex-row lg:gap-10">
+                {/* Accuracy ring */}
+                <div className="relative h-36 w-36 shrink-0 lg:h-40 lg:w-40">
+                  <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
+                    <defs>
+                      <linearGradient id="ring-fill" x1="0" y1="0" x2="120" y2="120">
+                        <stop stopColor="var(--indigo-500)" />
+                        <stop offset="1" stopColor="var(--violet-500)" />
+                      </linearGradient>
+                    </defs>
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="54"
+                      fill="none"
+                      stroke="var(--border)"
+                      strokeWidth="9"
+                    />
+                    <motion.circle
+                      cx="60"
+                      cy="60"
+                      r="54"
+                      fill="none"
+                      stroke="url(#ring-fill)"
+                      strokeWidth="9"
+                      strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      initial={{ strokeDashoffset: circumference }}
+                      animate={{ strokeDashoffset: strokeOffset }}
+                      transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="font-display text-[2.25rem] font-bold leading-none tracking-[-0.04em] tabular-nums text-text-primary">
+                      {stats.accuracy}
+                      <span className="text-xl text-text-muted">%</span>
+                    </span>
+                    <span className="mt-1 font-body text-[0.625rem] font-bold uppercase tracking-[0.14em] text-text-faint">
+                      Accuracy
+                    </span>
                   </div>
-                  <div
-                    className={`font-bold ${
-                      pct >= 70 ? 'text-success' : pct >= 40 ? 'text-accent' : 'text-danger'
-                    }`}
-                  >
-                    {pct}%
+                </div>
+
+                <div className="min-w-0 flex-1 text-center lg:text-left">
+                  <p className="mb-2 font-body text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-accent">
+                    Session complete
+                  </p>
+                  <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-[-0.035em] text-text-primary lg:text-[2.5rem]">
+                    {verdict}
+                  </h1>
+                  <p className="mt-3 font-body text-[0.9375rem] text-text-secondary">
+                    {stats.correctCount} of {stats.total} correct across {stats.topics.length}{' '}
+                    {stats.topics.length === 1 ? 'concept' : 'concepts'}. Every attempt has been fed
+                    back into your weakness profile.
+                  </p>
+
+                  <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:justify-center lg:justify-start">
+                    <Button size="lg" icon="practice" onClick={() => handleDone('/practice')}>
+                      Practice again
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="secondary"
+                      icon="dashboard"
+                      onClick={() => handleDone('/dashboard')}
+                    >
+                      Back to dashboard
+                    </Button>
                   </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
+                </div>
+              </div>
+            </Panel>
+          </motion.div>
 
-        {/* Solutions — per-question review of what was right, wrong or skipped */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-text-muted text-xs font-semibold tracking-widest uppercase">
-              Solutions
-            </h4>
-            <div className="flex bg-surface rounded-md p-0.5">
-              {(['all', 'mistakes'] as const).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setSolutionFilter(filter)}
-                  className={`text-xs px-3 py-1 rounded transition-colors ${
-                    solutionFilter === filter
-                      ? 'bg-accent text-accent-text font-semibold'
-                      : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  {filter === 'all' ? `All (${stats.total})` : `Mistakes (${mistakeCount})`}
-                </button>
-              ))}
-            </div>
+          {/* ---- Numbers ---------------------------------------------- */}
+          <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
+            <StatCard
+              label="Correct"
+              value={`${stats.correctCount}/${stats.total}`}
+              icon="check"
+              tone={stats.accuracy >= 70 ? 'success' : 'default'}
+            />
+            <StatCard
+              label="Mistakes"
+              value={mistakeCount}
+              icon="alert"
+              tone={mistakeCount > 0 ? 'danger' : 'success'}
+            />
+            <StatCard
+              label="Avg / question"
+              value={`${Math.floor(stats.avgTime / 60)}m ${stats.avgTime % 60}s`}
+              icon="clock"
+            />
+            <StatCard label="Concepts" value={stats.topics.length} icon="layers" />
           </div>
 
-          {visibleSolutions.length === 0 ? (
-            <div className="bg-surface rounded-lg p-6 text-center text-sm text-text-muted">
-              No mistakes in this session — clean sweep. 🎯
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {visibleSolutions.map(({ question, index }) => (
-                <motion.div
-                  key={question.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <SolutionCard question={question} answer={answers[question.id]} index={index} />
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* ---- Breakdown + solutions --------------------------------- */}
+          <PageGrid className="items-start">
+            <div className="lg:col-span-4">
+              <Panel className="lg:sticky lg:top-8">
+                <PanelHeader icon="trend" title="By concept" />
+                <div className="space-y-2.5">
+                  {stats.topics.map((topic, i) => {
+                    const pct = Math.round((topic.correct / topic.total) * 100);
+                    const bar =
+                      pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-accent' : 'bg-danger';
+                    const text =
+                      pct >= 70 ? 'text-success' : pct >= 40 ? 'text-accent' : 'text-danger';
 
-        {/* Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="flex flex-col gap-2"
-        >
-          <Button size="lg" fullWidth onClick={() => handleDone('/practice')}>
-            Practice Again
-          </Button>
-          <Button size="lg" variant="secondary" fullWidth onClick={() => handleDone('/dashboard')}>
-            Back to Dashboard
-          </Button>
-        </motion.div>
+                    return (
+                      <motion.div
+                        key={topic.topicName}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 + i * 0.05 }}
+                      >
+                        <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                          <span className="truncate font-body text-[0.8125rem] font-medium text-text-primary">
+                            {topic.topicName}
+                          </span>
+                          <span
+                            className={clsx(
+                              'shrink-0 font-body text-[0.8125rem] font-bold tabular-nums',
+                              text
+                            )}
+                          >
+                            {pct}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ delay: 0.4 + i * 0.05, duration: 0.5 }}
+                            className={clsx('h-full rounded-full', bar)}
+                          />
+                        </div>
+                        <p className="mt-1 font-body text-[0.6875rem] text-text-faint">
+                          {topic.correct}/{topic.total} correct
+                        </p>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </Panel>
+            </div>
+
+            {/* Solutions — per-question review of what was right, wrong or skipped */}
+            <div className="lg:col-span-8">
+              <Section
+                title="Solutions"
+                aside={
+                  <span className="inline-flex rounded-lg border border-border bg-surface p-0.5">
+                    {(['all', 'mistakes'] as const).map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setSolutionFilter(filter)}
+                        className={clsx(
+                          'rounded-md px-3 py-1.5 font-body text-[0.6875rem] font-semibold uppercase tracking-[0.08em] transition-colors',
+                          solutionFilter === filter
+                            ? 'bg-accent text-accent-text'
+                            : 'text-text-muted hover:text-text-primary'
+                        )}
+                      >
+                        {filter === 'all' ? `All ${stats.total}` : `Mistakes ${mistakeCount}`}
+                      </button>
+                    ))}
+                  </span>
+                }
+              >
+                {visibleSolutions.length === 0 ? (
+                  <Panel className="text-center">
+                    <p className="font-body text-sm text-text-muted">
+                      No mistakes in this session — clean sweep.
+                    </p>
+                  </Panel>
+                ) : (
+                  <div className="space-y-2.5">
+                    {visibleSolutions.map(({ question, index }) => (
+                      <motion.div
+                        key={question.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <SolutionCard
+                          question={question}
+                          answer={answers[question.id]}
+                          index={index}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </Section>
+            </div>
+          </PageGrid>
+        </Page>
       </div>
     </div>
   );

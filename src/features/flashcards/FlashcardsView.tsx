@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button, Display } from '@/components/ui';
+import clsx from 'clsx';
+import { Button, Display, Panel, PanelHeader } from '@/components/ui';
+import { Page } from '@/components/layout';
 import { EmptyState } from '@/components/feedback';
 import { aweEngine } from '@/engine/engine';
 import { ReviewGrade } from '@/engine/types';
@@ -153,124 +155,211 @@ export const FlashcardsView = () => {
   // backwards — and so it actually reaches 100%.
   const progressPct = Math.min(100, (reviewed / Math.max(deck.length, 1)) * 100);
 
+  const conceptName = conceptNames.get(state.conceptId) ?? state.conceptId;
+
   return (
-    <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6 flex flex-col">
+    <Page width="default" className="flex flex-col">
       {/* Header + progress */}
-      <div className="mb-8">
-        <div className="mb-2 flex items-baseline justify-between">
-          <Display as="h1" size="md">
+      <div className="mb-7">
+        <div className="mb-2 flex items-baseline justify-between gap-4">
+          <Display as="h1" size="lg">
             Review
           </Display>
-          <span className="font-body text-xs font-mono tabular-nums text-text-muted">
-            {index + 1} / {deck.length}
+          <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-text-muted">
+            <span className="text-text-primary">{index + 1}</span> / {deck.length}
           </span>
         </div>
-        <p className="mb-4 font-body text-sm text-text-secondary">
+        <p className="mb-5 font-body text-[0.9375rem] text-text-secondary">
           Spaced-repetition deck. Due today, weakest concepts first.
         </p>
-        <div className="h-1 w-full rounded-full bg-border">
-          <div
-            className="h-1 rounded-full bg-accent transition-all duration-300"
-            style={{ width: `${progressPct}%` }}
+        <div className="h-1 w-full overflow-hidden rounded-full bg-border">
+          <motion.div
+            className="h-full rounded-full bg-gradient-accent"
+            initial={false}
+            animate={{ width: `${progressPct}%` }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           />
         </div>
       </div>
 
-      {/* Flip card */}
-      <div className="flex-1 flex flex-col justify-center" style={{ perspective: 1200 }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${cardId}-${index}`}
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.button
-              onClick={() => setFlipped((f) => !f)}
-              animate={{ rotateY: flipped ? 180 : 0 }}
-              transition={{ duration: 0.4, type: 'spring', damping: 22 }}
-              style={{ transformStyle: 'preserve-3d' }}
-              className="relative w-full h-72 cursor-pointer"
-              aria-label={flipped ? 'Show front' : 'Reveal answer'}
-            >
-              {/* Front */}
-              <div
-                style={{ backfaceVisibility: 'hidden' }}
-                aria-hidden={flipped}
-                className="absolute inset-0 bg-surface rounded-lg shadow-lg border border-border flex flex-col items-center justify-center p-8"
+      <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:gap-8">
+        {/* ---- Card + grading ---------------------------------------- */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex flex-1 flex-col justify-center" style={{ perspective: 1600 }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${cardId}-${index}`}
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.2 }}
               >
-                <span className="text-xs font-semibold text-accent bg-accent-subtle px-2 py-1 rounded-full mb-4">
-                  {conceptNames.get(state.conceptId) ?? state.conceptId}
-                </span>
-                <p className="text-xl text-text-primary text-center font-medium leading-relaxed">
-                  {content.front}
-                </p>
-                <p className="text-xs text-text-muted mt-6">✋ Tap to reveal</p>
-              </div>
-
-              {/* Back — mounted only once revealed. backfaceVisibility hides it
-                  visually but leaves it in the DOM, so screen readers,
-                  find-in-page and copy-paste all handed over the answer before
-                  the student had tried to recall it. */}
-              <div
-                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-                className="absolute inset-0 bg-surface-raised rounded-lg shadow-lg border border-accent flex flex-col items-center justify-center p-8"
-              >
-                {flipped && (
-                  <>
-                    {content.backFormula && (
-                      <p className="font-mono text-lg text-accent text-center mb-4">
-                        {content.backFormula}
-                      </p>
-                    )}
-                    <p className="text-text-secondary text-center text-sm leading-relaxed">
-                      {content.backExplanation}
+                <motion.button
+                  onClick={() => setFlipped((f) => !f)}
+                  animate={{ rotateY: flipped ? 180 : 0 }}
+                  transition={{ duration: 0.45, type: 'spring', damping: 24 }}
+                  style={{ transformStyle: 'preserve-3d' }}
+                  className="relative h-80 w-full cursor-pointer lg:h-[26rem]"
+                  aria-label={flipped ? 'Show front' : 'Reveal answer'}
+                >
+                  {/* Front */}
+                  <div
+                    style={{ backfaceVisibility: 'hidden' }}
+                    aria-hidden={flipped}
+                    className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface p-8 shadow-lg lg:p-12"
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border-highlight to-transparent"
+                      aria-hidden="true"
+                    />
+                    <span className="mb-6 rounded-full border border-accent-muted bg-accent-subtle px-3 py-1 font-body text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-accent">
+                      {conceptName}
+                    </span>
+                    <p className="text-balance text-center font-display text-xl font-semibold leading-snug tracking-[-0.02em] text-text-primary lg:text-2xl">
+                      {content.front}
                     </p>
-                  </>
-                )}
-              </div>
-            </motion.button>
-          </motion.div>
-        </AnimatePresence>
-      </div>
+                    <p className="mt-8 font-body text-xs text-text-faint">Tap to reveal</p>
+                  </div>
 
-      {/* Review actions — only after the reveal, so the grade means something.
-          Three grades, not two: a binary answer gives the SM-2 ease factor
-          nothing to adapt with, which left the algorithm's one adaptive
-          parameter doing no work. */}
-      <div className="mt-6 pb-4">
-        {flipped ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-3 gap-2"
-          >
-            <Button variant="secondary" fullWidth size="lg" onClick={() => handleReview('again')}>
-              Again
-              <span className="text-xs text-text-muted font-normal">· in minutes</span>
-            </Button>
-            <Button fullWidth size="lg" onClick={() => handleReview('good')}>
-              Good
-              <span className="text-xs font-normal opacity-80">
-                · {intervalLabel(preview?.good ?? 1)}
-              </span>
-            </Button>
-            <Button variant="secondary" fullWidth size="lg" onClick={() => handleReview('easy')}>
-              Easy
-              <span className="text-xs text-text-muted font-normal">
-                · {intervalLabel(preview?.easy ?? 4)}
-              </span>
-            </Button>
-          </motion.div>
-        ) : (
-          <p className="text-center text-sm text-text-muted h-12 flex items-center justify-center">
-            {lastScheduled !== null && reviewed > 0
-              ? `Rescheduled ${intervalLabel(lastScheduled)} ✓`
-              : 'Recall the answer, then tap the card to check yourself'}
-          </p>
-        )}
+                  {/* Back — mounted only once revealed. backfaceVisibility hides it
+                      visually but leaves it in the DOM, so screen readers,
+                      find-in-page and copy-paste all handed over the answer before
+                      the student had tried to recall it. */}
+                  <div
+                    style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                    className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-accent-muted bg-surface-raised p-8 shadow-lg lg:p-12"
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-0 bg-gradient-accent-soft"
+                      aria-hidden="true"
+                    />
+                    {flipped && (
+                      <div className="relative w-full">
+                        {content.backFormula && (
+                          <p className="mb-5 text-center font-mono text-lg font-semibold text-accent lg:text-xl">
+                            {content.backFormula}
+                          </p>
+                        )}
+                        <p className="mx-auto max-w-prose text-center font-body text-[0.9375rem] leading-relaxed text-text-secondary">
+                          {content.backExplanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </motion.button>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Review actions — only after the reveal, so the grade means something.
+              Three grades, not two: a binary answer gives the SM-2 ease factor
+              nothing to adapt with, which left the algorithm's one adaptive
+              parameter doing no work. */}
+          <div className="mt-6">
+            {flipped ? (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 gap-2.5 sm:grid-cols-3"
+              >
+                <GradeButton
+                  label="Again"
+                  hint="in minutes"
+                  tone="danger"
+                  onClick={() => handleReview('again')}
+                />
+                <GradeButton
+                  label="Good"
+                  hint={intervalLabel(preview?.good ?? 1)}
+                  tone="accent"
+                  onClick={() => handleReview('good')}
+                />
+                <GradeButton
+                  label="Easy"
+                  hint={intervalLabel(preview?.easy ?? 4)}
+                  tone="success"
+                  onClick={() => handleReview('easy')}
+                />
+              </motion.div>
+            ) : (
+              <p className="flex h-[4.25rem] items-center justify-center text-center font-body text-sm text-text-muted">
+                {lastScheduled !== null && reviewed > 0
+                  ? `Rescheduled ${intervalLabel(lastScheduled)}`
+                  : 'Recall the answer, then tap the card to check yourself'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ---- Desktop session rail ---------------------------------- */}
+        <aside className="hidden w-64 shrink-0 lg:block">
+          <Panel className="sticky top-8">
+            <PanelHeader icon="flashcards" title="This session" />
+
+            <dl className="space-y-3">
+              <RailStat label="Reviewed" value={String(reviewed)} />
+              <RailStat label="In deck" value={String(deck.length)} />
+              <RailStat label="Remaining" value={String(Math.max(0, deck.length - index))} />
+              <RailStat label="Scheduled ahead" value={String(upcoming.length)} />
+            </dl>
+
+            <div className="mt-5 border-t border-border pt-4">
+              <p className="mb-1.5 font-body text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-text-muted">
+                Current concept
+              </p>
+              <p className="font-heading text-sm font-semibold text-text-primary">{conceptName}</p>
+            </div>
+
+            <p className="mt-5 border-t border-border pt-4 font-body text-[0.6875rem] leading-relaxed text-text-faint">
+              Grades drive the SM-2 interval. &ldquo;Again&rdquo; requeues the card inside this
+              session rather than hiding it for a day.
+            </p>
+          </Panel>
+        </aside>
       </div>
-    </div>
+    </Page>
   );
 };
+
+const RailStat = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex items-baseline justify-between">
+    <dt className="font-body text-[0.8125rem] text-text-muted">{label}</dt>
+    <dd className="font-mono text-[0.8125rem] font-semibold tabular-nums text-text-primary">
+      {value}
+    </dd>
+  </div>
+);
+
+const gradeTones = {
+  danger: 'border-danger/30 bg-danger-subtle text-danger hover:border-danger/60',
+  accent: 'border-transparent bg-gradient-accent text-white shadow-glow-soft hover:shadow-glow',
+  success: 'border-success/30 bg-success-subtle text-success hover:border-success/60',
+} as const;
+
+/** Grade control. The interval preview is the point — it tells the student
+ *  what the choice actually costs before they make it. */
+const GradeButton = ({
+  label,
+  hint,
+  tone,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  tone: keyof typeof gradeTones;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={clsx(
+      'flex h-[4.25rem] flex-col items-center justify-center rounded-xl border transition-all duration-150',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+      'active:translate-y-px',
+      gradeTones[tone]
+    )}
+  >
+    <span className="font-body text-[0.9375rem] font-bold tracking-[-0.01em]">{label}</span>
+    <span className="mt-0.5 font-body text-[0.6875rem] opacity-80">{hint}</span>
+  </button>
+);

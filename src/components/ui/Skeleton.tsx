@@ -5,35 +5,31 @@ interface SkeletonProps {
   count?: number;
 }
 
-export const Skeleton = ({ className, count = 1 }: SkeletonProps) => {
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className={clsx(
-            'bg-skeleton rounded-md animate-shimmer',
-            className
-          )}
-        />
-      ))}
-    </>
-  );
-};
+/**
+ * Uses the `.skeleton` class from globals.css, which sweeps a transform-only
+ * overlay. The previous implementation animated `background-position` across a
+ * 1000px gradient — a full repaint of every placeholder, every frame.
+ */
+export const Skeleton = ({ className, count = 1 }: SkeletonProps) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className={clsx('skeleton rounded-md', className)} aria-hidden="true" />
+    ))}
+  </>
+);
 
 export const SkeletonCard = () => (
-  <div className="bg-surface rounded-sm p-4 shadow-md space-y-3">
-    <Skeleton className="h-6 w-3/4" />
+  <div className="space-y-3 rounded-xl border border-border bg-surface p-5 lg:p-6">
+    <Skeleton className="h-5 w-1/3" />
+    <Skeleton className="h-8 w-3/4" />
     <Skeleton className="h-4 w-full" />
     <Skeleton className="h-4 w-5/6" />
   </div>
 );
 
 export const SkeletonRadar = () => (
-  <div className="flex items-center justify-center w-full h-64">
-    <div className="relative w-48 h-48">
-      <Skeleton className="absolute inset-0 rounded-full" />
-    </div>
+  <div className="flex h-64 w-full items-center justify-center">
+    <Skeleton className="h-48 w-48 rounded-full" />
   </div>
 );
 

@@ -1,123 +1,252 @@
 /* ============================================================
-   REFYN — Semantic Tokens (Dark + Light themes)
+   REFYN — Design Tokens
+   ------------------------------------------------------------
+   A precision-instrument palette. The old amber-on-zinc kit read
+   as generic edtech; this one is built around a cool graphite
+   canvas with a violet→indigo primary and a cyan data hue, which
+   is the register quant tooling actually lives in.
+
+   Three layers, in order:
+     1. PRIMITIVES  — raw values. Never referenced by a component.
+     2. SEMANTICS   — what a thing means. This is what components use.
+     3. EXPRESSION  — elevation, gradient, glow. The premium layer.
    ============================================================ */
 
-/* Primitive colors — never used directly in components */
 :root {
-  /* Neutrals */
-  --zinc-950: #09090b;
-  --zinc-900: #111113;
-  --zinc-800: #1c1c1f;
-  --zinc-700: #27272a;
-  --zinc-600: #3f3f46;
-  --zinc-500: #52525b;
-  --zinc-400: #71717a;
-  --zinc-300: #a1a1aa;
-  --zinc-200: #d4d4d8;
-  --zinc-100: #f4f4f5;
-  --zinc-50: #fafafa;
+  /* ---------- 1. PRIMITIVES ---------- */
+
+  /* Graphite — cool neutrals with a violet undertone, so the greys
+     sit under the accent rather than fighting it. */
+  --graphite-1000: #08080c;
+  --graphite-950: #0b0b11;
+  --graphite-900: #101017;
+  --graphite-850: #14141d;
+  --graphite-800: #1a1a24;
+  --graphite-750: #20202c;
+  --graphite-700: #282836;
+  --graphite-600: #363647;
+  --graphite-500: #4e4e63;
+  --graphite-400: #6e6e87;
+  --graphite-300: #9494a8;
+  --graphite-200: #c2c2d0;
+  --graphite-100: #e6e6ed;
+  --graphite-50: #f6f6f9;
   --white: #ffffff;
 
-  /* Brand — amber (CAT gold) */
+  /* Primary — indigo→violet. */
+  --indigo-700: #4338ca;
+  --indigo-600: #4f46e5;
+  --indigo-500: #6366f1;
+  --indigo-400: #818cf8;
+  --violet-600: #7c3aed;
+  --violet-500: #8b5cf6;
+  --violet-400: #a78bfa;
+
+  /* Data / secondary hue. */
+  --cyan-600: #0891b2;
+  --cyan-500: #06b6d4;
+  --cyan-400: #22d3ee;
+
+  /* Status. */
+  --red-600: #dc2626;
+  --red-500: #ef4444;
+  --red-400: #f87171;
+  --green-600: #16a34a;
+  --green-500: #22c55e;
+  --green-400: #4ade80;
   --amber-600: #d97706;
   --amber-500: #f59e0b;
   --amber-400: #fbbf24;
-
-  /* Semantic status */
-  --red-500: #ef4444;
-  --red-400: #f87171;
-  --green-500: #22c55e;
-  --green-400: #4ade80;
   --blue-500: #3b82f6;
+  --blue-400: #60a5fa;
 
   /* Topic identity hues — identity ONLY, never used to signal state.
-     Chosen to stay distinct from --accent (amber), --danger, --success, --info. */
-  --violet-400: #a78bfa;
-  --cyan-400: #22d3ee;
-  --pink-400: #f472b6;
-  --lime-400: #a3e635;
+     Deliberately spaced around the wheel and away from the accent. */
+  --topic-violet: #a78bfa;
+  --topic-cyan: #22d3ee;
+  --topic-rose: #fb7185;
+  --topic-lime: #a3e635;
 
-  /* Typography
-     --font-display : Anton, for large editorial headlines only (>=28px).
-                      Single weight (400). Never use below 20px — it turns to mush.
-     --font-heading : Space Grotesk, for mid-level UI headings and card titles.
-     --font-body    : Inter, for everything you actually read. */
-  --font-display: 'Anton', 'Space Grotesk', system-ui, sans-serif;
+  /* ---------- TYPOGRAPHY ----------
+     Display is now Sora, not Anton. Anton ships a single weight and
+     was pinned to uppercase across every h1/h2, which is what made
+     the app read like a sports poster. Sora has a real weight axis,
+     so headlines can go tight-and-heavy without a synthesized bold,
+     and sentence case comes back. */
+  --font-display: 'Sora', system-ui, sans-serif;
   --font-heading: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ---------- MOTION ---------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 380ms;
 }
 
-/* DARK THEME (default) */
+/* ============================================================
+   2 + 3. DARK THEME (default)
+   ============================================================ */
 :root,
 [data-theme='dark'] {
-  --bg: var(--zinc-950);
-  --surface: var(--zinc-900);
-  --surface-raised: var(--zinc-800);
-  --border: var(--zinc-700);
-  --border-strong: var(--zinc-600);
+  --bg: var(--graphite-1000);
+  /* Second canvas tone for inset regions (the shell gutter). */
+  --bg-sunken: #050508;
+  --surface: var(--graphite-900);
+  --surface-raised: var(--graphite-850);
+  --surface-overlay: var(--graphite-800);
+  /* Translucent card fill — sits over the aurora so the background
+     bleeds through instead of being boxed out by a flat panel. */
+  --surface-glass: rgba(20, 20, 29, 0.72);
 
-  --text-primary: var(--zinc-50);
-  --text-secondary: var(--zinc-300);
-  --text-muted: var(--zinc-500);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  /* The hairline that makes a raised surface read as lit from above. */
+  --border-highlight: rgba(255, 255, 255, 0.09);
 
-  --accent: var(--amber-500);
-  --accent-hover: var(--amber-400);
-  --accent-text: var(--zinc-950);
-  --accent-subtle: rgba(245, 158, 11, 0.1);
+  --text-primary: var(--graphite-50);
+  --text-secondary: var(--graphite-300);
+  --text-muted: var(--graphite-400);
+  --text-faint: var(--graphite-500);
+
+  --accent: var(--indigo-500);
+  --accent-hover: var(--indigo-400);
+  --accent-active: var(--indigo-600);
+  --accent-text: var(--white);
+  --accent-subtle: rgba(99, 102, 241, 0.12);
+  --accent-muted: rgba(99, 102, 241, 0.22);
+
+  --accent-2: var(--cyan-400);
+  --accent-2-subtle: rgba(34, 211, 238, 0.12);
 
   --danger: var(--red-500);
-  --danger-subtle: rgba(239, 68, 68, 0.1);
+  --danger-hover: var(--red-400);
+  --danger-subtle: rgba(239, 68, 68, 0.12);
   --success: var(--green-500);
-  --success-subtle: rgba(34, 197, 94, 0.1);
+  --success-subtle: rgba(34, 197, 94, 0.12);
+  --warning: var(--amber-500);
+  --warning-subtle: rgba(245, 158, 11, 0.12);
   --info: var(--blue-500);
-  --info-subtle: rgba(59, 130, 246, 0.1);
+  --info-subtle: rgba(59, 130, 246, 0.12);
 
-  --skeleton: var(--zinc-800);
-  --overlay: rgba(0, 0, 0, 0.7);
+  --skeleton: var(--graphite-800);
+  --overlay: rgba(4, 4, 8, 0.72);
 
-  /* Topic identity */
-  --topic-a: var(--violet-400);
-  --topic-b: var(--cyan-400);
-  --topic-c: var(--pink-400);
-  --topic-d: var(--lime-400);
+  --topic-a: var(--topic-violet);
+  --topic-b: var(--topic-cyan);
+  --topic-c: var(--topic-rose);
+  --topic-d: var(--topic-lime);
+
+  /* ---------- EXPRESSION ----------
+     Layered shadows. A single `shadow-md` is what makes a card look
+     stock; real depth needs a tight contact shadow plus a wide
+     ambient one. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 16px 40px rgba(0, 0, 0, 0.44);
+  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.44), 0 32px 72px rgba(0, 0, 0, 0.52);
+
+  /* Coloured glow for the primary action + focus states. */
+  --glow-accent: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 8px 28px rgba(99, 102, 241, 0.32);
+  --glow-accent-soft: 0 6px 24px rgba(99, 102, 241, 0.2);
+
+  --gradient-accent: linear-gradient(135deg, var(--indigo-500) 0%, var(--violet-500) 100%);
+  --gradient-accent-soft: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.16) 0%,
+    rgba(139, 92, 246, 0.06) 100%
+  );
+  /* Top-edge sheen on raised surfaces. */
+  --gradient-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --gradient-text: linear-gradient(120deg, var(--graphite-50) 0%, var(--graphite-300) 100%);
+
+  /* Ambient background wash — three soft colour fields behind the app. */
+  --aurora-1: rgba(99, 102, 241, 0.16);
+  --aurora-2: rgba(139, 92, 246, 0.1);
+  --aurora-3: rgba(34, 211, 238, 0.07);
+  --grid-line: rgba(255, 255, 255, 0.022);
 }
 
-/* LIGHT THEME */
+/* ============================================================
+   LIGHT THEME
+   ============================================================ */
 [data-theme='light'] {
-  --bg: var(--zinc-50);
+  --bg: #f7f7fb;
+  --bg-sunken: #eeeef4;
   --surface: var(--white);
   --surface-raised: var(--white);
-  --border: var(--zinc-200);
-  --border-strong: var(--zinc-300);
+  --surface-overlay: var(--white);
+  --surface-glass: rgba(255, 255, 255, 0.8);
 
-  --text-primary: var(--zinc-950);
-  --text-secondary: var(--zinc-700);
-  --text-muted: var(--zinc-500);
+  --border: rgba(14, 14, 24, 0.09);
+  --border-strong: rgba(14, 14, 24, 0.16);
+  --border-highlight: rgba(255, 255, 255, 0.9);
 
-  --accent: var(--amber-600);
-  --accent-hover: var(--amber-500);
+  --text-primary: var(--graphite-950);
+  --text-secondary: #45455c;
+  --text-muted: var(--graphite-400);
+  --text-faint: var(--graphite-300);
+
+  --accent: var(--indigo-600);
+  --accent-hover: var(--indigo-500);
+  --accent-active: var(--indigo-700);
   --accent-text: var(--white);
-  --accent-subtle: rgba(245, 158, 11, 0.08);
+  --accent-subtle: rgba(79, 70, 229, 0.08);
+  --accent-muted: rgba(79, 70, 229, 0.16);
 
-  --danger: var(--red-500);
-  --danger-subtle: rgba(239, 68, 68, 0.08);
-  --success: var(--green-500);
-  --success-subtle: rgba(34, 197, 94, 0.08);
+  --accent-2: var(--cyan-600);
+  --accent-2-subtle: rgba(8, 145, 178, 0.09);
+
+  --danger: var(--red-600);
+  --danger-hover: var(--red-500);
+  --danger-subtle: rgba(220, 38, 38, 0.08);
+  --success: var(--green-600);
+  --success-subtle: rgba(22, 163, 74, 0.09);
+  --warning: var(--amber-600);
+  --warning-subtle: rgba(217, 119, 6, 0.1);
   --info: var(--blue-500);
-  --info-subtle: rgba(59, 130, 246, 0.08);
+  --info-subtle: rgba(59, 130, 246, 0.09);
 
-  --skeleton: var(--zinc-200);
-  --overlay: rgba(0, 0, 0, 0.35);
+  --skeleton: #e8e8ef;
+  --overlay: rgba(14, 14, 24, 0.42);
 
-  /* Topic identity — darkened so they hold contrast on a white surface */
+  /* Darkened so they hold contrast on white. */
   --topic-a: #7c3aed;
   --topic-b: #0891b2;
-  --topic-c: #db2777;
+  --topic-c: #e11d48;
   --topic-d: #65a30d;
-}
 
-/* Smooth transitions when theme changes */
-* {
-  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+  --shadow-xs: 0 1px 2px rgba(14, 14, 24, 0.05);
+  --shadow-sm: 0 1px 2px rgba(14, 14, 24, 0.06), 0 2px 6px rgba(14, 14, 24, 0.04);
+  --shadow-md: 0 2px 4px rgba(14, 14, 24, 0.06), 0 8px 20px rgba(14, 14, 24, 0.07);
+  --shadow-lg: 0 4px 10px rgba(14, 14, 24, 0.07), 0 18px 44px rgba(14, 14, 24, 0.1);
+  --shadow-xl: 0 10px 20px rgba(14, 14, 24, 0.08), 0 34px 76px rgba(14, 14, 24, 0.13);
+
+  --glow-accent: 0 0 0 1px rgba(79, 70, 229, 0.28), 0 8px 24px rgba(79, 70, 229, 0.24);
+  --glow-accent-soft: 0 6px 20px rgba(79, 70, 229, 0.16);
+
+  --gradient-accent: linear-gradient(135deg, var(--indigo-600) 0%, var(--violet-600) 100%);
+  --gradient-accent-soft: linear-gradient(
+    135deg,
+    rgba(79, 70, 229, 0.1) 0%,
+    rgba(124, 58, 237, 0.04) 100%
+  );
+  --gradient-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --gradient-text: linear-gradient(120deg, var(--graphite-950) 0%, #45455c 100%);
+
+  --aurora-1: rgba(99, 102, 241, 0.13);
+  --aurora-2: rgba(139, 92, 246, 0.09);
+  --aurora-3: rgba(34, 211, 238, 0.08);
+  --grid-line: rgba(14, 14, 24, 0.032);
 }

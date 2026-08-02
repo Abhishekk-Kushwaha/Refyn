@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useToast } from '@/components/feedback';
 import { onAweStoreError } from '@/engine/engine';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
+import { MobileHeader } from './MobileHeader';
 
 export const AppLayout = () => {
   const toast = useToast();
   const warnedRef = useRef(false);
+  const { pathname } = useLocation();
 
   // Persistence failures used to be swallowed entirely: the store logged
   // nothing, showed nothing, and relied on "the next write will retry" — so a
@@ -28,19 +30,30 @@ export const AppLayout = () => {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-bg">
-      {/* Sidebar (desktop only) */}
-      <div className="hidden lg:block">
-        <Sidebar />
+    <div className="relative min-h-screen bg-bg">
+      {/* Ambient wash. Fixed and non-interactive; sits behind everything. */}
+      <div className="app-aurora" aria-hidden="true" />
+      <div className="app-grid" aria-hidden="true" />
+
+      <div className="relative z-10 flex min-h-screen">
+        {/* Persistent desktop sidebar. */}
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MobileHeader />
+
+          {/* `key` restarts the entry animation on navigation so each screen
+              arrives rather than snapping in. */}
+          <main key={pathname} className="flex flex-1 flex-col pb-20 animate-rise lg:pb-0">
+            <Outlet />
+          </main>
+        </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col pb-16 lg:pb-0">
-        <Outlet />
-      </div>
-
-      {/* Bottom nav (mobile only) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
+      {/* Mobile tab bar. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
         <BottomNav />
       </div>
     </div>

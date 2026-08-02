@@ -9,6 +9,8 @@ export { Skeleton, SkeletonCard, SkeletonRadar, SkeletonAvatar } from './Skeleto
 /* Editorial layer */
 export { Icon, type IconName } from './Icon';
 export { Display, Eyebrow } from './Display';
+export { BrandMark } from './BrandMark';
+export { Panel, PanelHeader, StatCard } from './Panel';
 export { StatPill, StatBar } from './StatPill';
 export { ModeCard } from './ModeCard';
 export { TopicTile, TopicTileRow, type TopicTone } from './TopicTile';

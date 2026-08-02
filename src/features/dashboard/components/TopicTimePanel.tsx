@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Eyebrow } from '@/components/ui';
+import { Panel, PanelHeader } from '@/components/ui';
 import { TopicWeakness } from '@/services/weakness.service';
 
 interface TopicTimePanelProps {
@@ -44,17 +44,19 @@ const Row = ({ topic, slowest, index }: { topic: TopicWeakness; slowest: number;
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="bg-surface rounded-sm p-3"
+      className="rounded-lg bg-surface-raised p-3.5"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-semibold text-sm text-text-primary truncate">{topic.topicName}</h3>
-        <span className="font-body text-sm font-semibold text-text-primary flex-shrink-0">
+        <h3 className="truncate font-heading text-sm font-semibold tracking-[-0.01em] text-text-primary">
+          {topic.topicName}
+        </h3>
+        <span className="flex-shrink-0 font-body text-sm font-semibold tabular-nums text-text-primary">
           {topic.avgSeconds !== null ? duration(topic.avgSeconds) : '—'}
           <span className="font-normal text-text-muted"> / question</span>
         </span>
       </div>
 
-      <div className="mt-1.5 h-1.5 w-full rounded-full bg-border overflow-hidden">
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${width}%` }}
@@ -89,21 +91,24 @@ export const TopicTimePanel = ({ topics }: TopicTimePanelProps) => {
   const totalSpent = timed.reduce((sum, t) => sum + t.totalSeconds, 0);
 
   return (
-    <section>
-      <div className="mb-3 flex items-baseline justify-between">
-        <Eyebrow className="text-text-muted">Time per topic</Eyebrow>
-        <span className="font-body text-[0.6875rem] font-bold uppercase tracking-wider text-text-secondary">
-          {longDuration(totalSpent)} practised
-        </span>
-      </div>
+    <Panel className="flex h-full flex-col">
+      <PanelHeader
+        icon="clock"
+        title="Time per topic"
+        aside={
+          <span className="font-body text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-text-faint">
+            {longDuration(totalSpent)} practised
+          </span>
+        }
+      />
       <div className="space-y-2">
         {timed.map((t, i) => (
           <Row key={t.topicName} topic={t} slowest={slowest} index={i} />
         ))}
       </div>
-      <p className="mt-2 font-body text-[0.6875rem] text-text-muted">
+      <p className="mt-auto pt-4 font-body text-[0.6875rem] leading-relaxed text-text-faint">
         Slowest first. Red marks a topic where wrong answers cost more time than right ones.
       </p>
-    </section>
+    </Panel>
   );
 };

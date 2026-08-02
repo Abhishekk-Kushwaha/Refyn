@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { SkeletonCard, Display, Eyebrow, StatBar, StatPill, ModeCard } from '@/components/ui';
+import { Button, Panel, PanelHeader, SkeletonCard, StatCard } from '@/components/ui';
+import { Page, PageHeader, PageGrid, Section } from '@/components/layout';
 import { ErrorState, EmptyState, useToast } from '@/components/feedback';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
 import { useDailyFocus } from '@/hooks/useDailyFocus';
@@ -37,12 +38,14 @@ export const DashboardView = () => {
   // alone does not capture.
   const enginePick = data?.subtopics[0];
   const attempted = data?.subtopics.reduce((sum, s) => sum + s.attempts, 0) ?? 0;
+  const overallAccuracy = attempted
+    ? Math.round(
+        data!.subtopics.reduce((sum, s) => sum + s.accuracy * s.attempts, 0) / attempted
+      )
+    : 0;
+
   const focus = useDailyFocus(enginePick, enginePick?.frequencyWeight, {
-    overallAccuracy: attempted
-      ? Math.round(
-          data!.subtopics.reduce((sum, s) => sum + s.accuracy * s.attempts, 0) / attempted
-        )
-      : 0,
+    overallAccuracy,
     totalAttempts: data?.totalAttempts ?? 0,
     profile: data?.subtopics ?? [],
     topics: data?.topics ?? [],
@@ -76,47 +79,46 @@ export const DashboardView = () => {
     }
   };
 
-  return (
-    <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-      {/* Stat bar */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <StatBar>
-          <StatPill
-            icon="practice"
-            value={data?.totalAttempts ?? 0}
-            unit="attempted"
-            label="Questions attempted"
-          />
-          {data && data.totalAttempts > 0 && (
-            <StatPill
-              icon="trend"
-              value={Math.round(
-                (data.subtopics.reduce((sum, s) => sum + (s.accuracy * s.attempts), 0) /
-                  (data.subtopics.reduce((sum, s) => sum + s.attempts, 0) || 1))
-              )}
-              unit="%"
-              label="Overall accuracy"
-              tone="accent"
-            />
-          )}
-        </StatBar>
-      </motion.div>
+  const hasData = !isLoading && !error && data && data.totalAttempts > 0;
 
-      {/* Greeting */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Eyebrow className="mb-2 text-accent">Hey {displayName}</Eyebrow>
-        <Display size="lg">Hunt your weakness</Display>
-        <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">
-          Complete a practice session to see ranked insights into your weak spots. We'll always show you what needs fixing next.
-        </p>
-      </motion.div>
+  // Concepts the engine currently rates as weak — the headline number that
+  // tells you whether the profile is improving.
+  const weakCount =
+    data?.subtopics.filter((s) => s.band === 'critical' || s.band === 'weak').length ?? 0;
+
+  return (
+    <Page width="wide">
+      <PageHeader
+        eyebrow={`Hey ${displayName}`}
+        title="Hunt your weakness"
+        description="Every session sharpens the ranking below. The engine picks what to fix next — you just show up and drill."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="md"
+              icon="flashcards"
+              onClick={() => navigate('/flashcards')}
+            >
+              Review cards
+            </Button>
+            <Button size="md" icon="practice" onClick={() => navigate('/practice')}>
+              Start practice
+            </Button>
+          </>
+        }
+      />
 
       {/* Loading */}
       {isLoading && (
-        <div className="space-y-4">
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
+        <PageGrid>
+          <div className="lg:col-span-8">
+            <SkeletonCard />
+          </div>
+          <div className="lg:col-span-4">
+            <SkeletonCard />
+          </div>
+        </PageGrid>
       )}
 
       {/* Error */}
@@ -134,66 +136,121 @@ export const DashboardView = () => {
         />
       )}
 
-      {/* Success */}
-      {!isLoading && !error && data && data.totalAttempts > 0 && (
-        <div className="space-y-8">
-          {/* Today's focus — engine picks the concept, AI explains why */}
-          {focusSubtopic && (
-            <FocusCard
-              subtopic={focusSubtopic}
-              message={focus.data?.message ?? ''}
-              loading={focus.isLoading}
-              onDrill={handleDrill}
-              drilling={drillingId === focusSubtopic.subtopicId}
-            />
-          )}
-
-          {/* Quick start cards */}
-          <section className="space-y-2">
-            <Eyebrow className="text-text-muted">Practice</Eyebrow>
-            <ModeCard
-              title="Weakness Hunt"
-              description="Pulls from your weakest subtopics and adapts as you go."
-              meta={['Adaptive', 'Ranked']}
-              tone="accent"
-              onClick={() => navigate('/practice')}
-            />
-          </section>
-
-          {/* Radar */}
-          <motion.section
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-xl border border-border p-5"
+      {hasData && (
+        <div className="space-y-5 xl:space-y-6">
+          {/* ---- Row 1: the numbers ------------------------------------- */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5 xl:gap-6"
           >
-            <div className="mb-3 flex items-baseline justify-between">
-              <Eyebrow className="text-text-muted">Weakness Map</Eyebrow>
-              <span className="font-body text-[0.6875rem] font-bold uppercase tracking-wider text-text-secondary">
-                {data.topics.length >= 3
-                  ? `${data.topics.length} sections`
-                  : `${data.subtopics.length} concepts`}
-              </span>
-            </div>
-            <WeaknessRadar topics={data.topics} subtopics={data.subtopics} />
-          </motion.section>
+            <StatCard
+              label="Attempted"
+              value={data.totalAttempts}
+              icon="practice"
+              hint="Questions answered all time"
+            />
+            <StatCard
+              label="Accuracy"
+              value={overallAccuracy}
+              unit="%"
+              icon="trend"
+              tone={overallAccuracy >= 70 ? 'success' : overallAccuracy >= 45 ? 'accent' : 'danger'}
+              hint="Weighted across every concept"
+            />
+            <StatCard
+              label="Weak spots"
+              value={weakCount}
+              icon="alert"
+              tone={weakCount > 0 ? 'warning' : 'success'}
+              hint={weakCount === 0 ? 'Nothing critical right now' : 'Concepts rated weak or worse'}
+            />
+            <StatCard
+              label="Concepts"
+              value={data.subtopics.length}
+              icon="layers"
+              hint={`Across ${data.topics.length} section${data.topics.length === 1 ? '' : 's'}`}
+            />
+          </motion.div>
 
-          {/* Pace per topic — engine-computed, hides itself until something
-              has been timed. */}
-          {data?.topics && <TopicTimePanel topics={data.topics} />}
+          {/* ---- Row 2: focus hero + quick start ------------------------ */}
+          <PageGrid>
+            {focusSubtopic && (
+              <div className="lg:col-span-8">
+                <FocusCard
+                  subtopic={focusSubtopic}
+                  message={focus.data?.message ?? ''}
+                  loading={focus.isLoading}
+                  onDrill={handleDrill}
+                  drilling={drillingId === focusSubtopic.subtopicId}
+                />
+              </div>
+            )}
+
+            <div className="lg:col-span-4">
+              <Panel className="flex h-full flex-col">
+                <PanelHeader icon="bolt" title="Jump in" />
+
+                <div className="flex flex-1 flex-col gap-2.5">
+                  <QuickStart
+                    title="Weakness Hunt"
+                    body="Pulls from your weakest subtopics and adapts as you go."
+                    onClick={() => navigate('/practice')}
+                  />
+                  <QuickStart
+                    title="Smart Quiz"
+                    body="A 70/20/10 blend of weak spots, revision and fresh material."
+                    onClick={() => navigate('/practice')}
+                  />
+                  <QuickStart
+                    title="Flashcards"
+                    body="Spaced repetition on the concepts you keep dropping."
+                    onClick={() => navigate('/flashcards')}
+                  />
+                </div>
+              </Panel>
+            </div>
+          </PageGrid>
+
+          {/* ---- Row 3: map + pace -------------------------------------- */}
+          <PageGrid>
+            <div className="lg:col-span-7">
+              <Panel className="h-full">
+                <PanelHeader
+                  icon="spark"
+                  title="Weakness map"
+                  aside={
+                    <span className="font-body text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-text-faint">
+                      {data.topics.length >= 3
+                        ? `${data.topics.length} sections`
+                        : `${data.subtopics.length} concepts`}
+                    </span>
+                  }
+                />
+                <WeaknessRadar topics={data.topics} subtopics={data.subtopics} />
+              </Panel>
+            </div>
+
+            {/* Pace per topic — engine-computed, hides itself until something
+                has been timed. */}
+            <div className="lg:col-span-5">
+              <TopicTimePanel topics={data.topics} />
+            </div>
+          </PageGrid>
 
           {/* Skip behaviour — engine-computed, renders itself away when there
               is no pattern worth showing. */}
           {skips.data && <SkipPanel data={skips.data} />}
 
-          {/* Ranked weak topics */}
-          <section>
-            <div className="mb-3 flex items-baseline justify-between">
-              <Eyebrow className="text-text-muted">Ranked by weakness</Eyebrow>
-              <span className="font-body text-[0.6875rem] font-bold uppercase tracking-wider text-text-secondary">
-                {data.subtopics.length} subtopics
-              </span>
-            </div>
-            <div className="space-y-2">
+          {/* ---- Ranked weak topics ------------------------------------- */}
+          <Section
+            title="Ranked by weakness"
+            aside={`${data.subtopics.length} subtopics`}
+          >
+            {/* The list was a single 672px column. On desktop it now fans out
+                to three, so the whole ranking is visible without scrolling. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4">
               {data.subtopics.map((subtopic, i) => (
                 <WeakTopicCard
                   key={subtopic.subtopicId}
@@ -204,9 +261,36 @@ export const DashboardView = () => {
                 />
               ))}
             </div>
-          </section>
+          </Section>
         </div>
       )}
-    </div>
+    </Page>
   );
 };
+
+/** Compact launcher row inside the "Jump in" panel. */
+const QuickStart = ({
+  title,
+  body,
+  onClick,
+}: {
+  title: string;
+  body: string;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex-1 rounded-lg border border-border bg-surface-raised p-3.5 text-left transition-colors duration-150 hover:border-border-strong hover:bg-surface-overlay focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+  >
+    <div className="flex items-center justify-between gap-3">
+      <span className="font-heading text-[0.9375rem] font-semibold tracking-[-0.01em] text-text-primary">
+        {title}
+      </span>
+      <span className="text-text-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent">
+        →
+      </span>
+    </div>
+    <p className="mt-1 font-body text-xs leading-relaxed text-text-muted">{body}</p>
+  </button>
+);
