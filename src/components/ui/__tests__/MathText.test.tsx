@@ -73,6 +73,43 @@ describe('MathText', () => {
     expect(render(prose)).toContain(prose);
   });
 
+  it('subscripts a numeric log base', () => {
+    expect(render('2 log10 2')).toContain('log<sub>10</sub>');
+  });
+
+  it('subscripts an underscore log base', () => {
+    expect(render('log_2 x')).toContain('log<sub>2</sub>');
+    expect(render('log_36 y')).toContain('log<sub>36</sub>');
+    expect(render('log_a b')).toContain('log<sub>a</sub>');
+  });
+
+  it('leaves plain log alone when there is no base', () => {
+    const out = render('log 5');
+    expect(out).toContain('log 5');
+    expect(out).not.toContain('<sub>');
+  });
+
+  // "logs", "logic" and "logarithm" must not have a letter torn off.
+  it('does not subscript ordinary words beginning with log', () => {
+    for (const word of ['logs', 'logic', 'logarithm']) {
+      const out = render(word);
+      expect(out).not.toContain('<sub>');
+      expect(out).toContain(word);
+    }
+  });
+
+  it('does not fire inside a longer word', () => {
+    // "parallelogram" contains "log" mid-word.
+    const out = render('area of a parallelogram');
+    expect(out).not.toContain('<sub>');
+    expect(out).toContain('parallelogram');
+  });
+
+  it('preserves the exponent fix alongside logs', () => {
+    const out = render('10^x + 4/10^x = 81/2');
+    expect(out).toContain('10<sup>x</sup>');
+  });
+
   it('renders nothing for empty input', () => {
     expect(renderToStaticMarkup(<MathText>{''}</MathText>)).toBe('');
     expect(renderToStaticMarkup(<MathText>{null}</MathText>)).toBe('');

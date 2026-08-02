@@ -16,6 +16,8 @@ import { Fragment, ReactNode } from 'react';
 //   10^-3          -> 10⁻³      (signed exponent)
 //   (997)*2^14     -> (997)×2¹⁴ (multiplication sign)
 //   4sqrt6         -> 4√6
+//   log10 2        -> log₁₀ 2   (subscripted base)
+//   log_2 x        -> log₂ x
 
 /** Characters that make an asterisk a multiplication sign rather than a bullet. */
 const isMathAdjacent = (ch: string | undefined): boolean =>
@@ -54,6 +56,35 @@ export const parseMathText = (input: string): ReactNode[] => {
     if (ch === '*' && isMathAdjacent(input[i - 1]) && isMathAdjacent(input[i + 1])) {
       buffer += '×';
       continue;
+    }
+
+    // log10 2 -> log₁₀ 2, log_2 x -> log₂ x.
+    //
+    // Only a digit run or an explicit underscore counts as a base. Bare
+    // letters are left alone on purpose: "logs", "logic" and "logarithm"
+    // would otherwise have their next letter torn off and subscripted. The
+    // word-boundary check keeps "parallelogram" out of it too.
+    if (
+      (ch === 'l' || ch === 'L') &&
+      input.slice(i, i + 3).toLowerCase() === 'log' &&
+      !/[A-Za-z]/.test(input[i - 1] ?? '')
+    ) {
+      let j = i + 3;
+      let base = '';
+      if (/[0-9]/.test(input[j] ?? '')) {
+        while (j < input.length && /[0-9]/.test(input[j])) base += input[j++];
+      } else if (input[j] === '_') {
+        j++;
+        while (j < input.length && /[0-9A-Za-z]/.test(input[j])) base += input[j++];
+      }
+      if (base) {
+        buffer += input.slice(i, i + 3); // keep the author's capitalisation
+        flush();
+        nodes.push(<sub key={key++}>{base}</sub>);
+        i = j - 1;
+        continue;
+      }
+      // No base to subscript — fall through and let "log" print normally.
     }
 
     if (ch === '^') {
