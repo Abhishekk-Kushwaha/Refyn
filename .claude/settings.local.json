@@ -128,7 +128,10 @@
       "PowerShell(npm run build 2>&1)",
       "PowerShell(npm test 2>&1)",
       "PowerShell(Get-ChildItem -Path D:\\\\Refyn\\\\src -Recurse -File | Select-Object @{n='Path';e={$_.FullName.Replace\\('D:\\\\Refyn\\\\',''\\)}}, @{n='KB';e={[math]::Round\\($_.Length/1KB,1\\)}} | Sort-Object Path | Format-Table -AutoSize)",
-      "PowerShell($f='C:\\\\Users\\\\Lenovo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Refyn\\\\bd04b146-6aff-436a-b4b1-500254e76dbd\\\\scratchpad\\\\design.html'; \\(Get-Content $f | Measure-Object -Line\\).Lines)"
+      "PowerShell($f='C:\\\\Users\\\\Lenovo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Refyn\\\\bd04b146-6aff-436a-b4b1-500254e76dbd\\\\scratchpad\\\\design.html'; \\(Get-Content $f | Measure-Object -Line\\).Lines)",
+      "PowerShell(cd D:\\\\Refyn; Get-ChildItem SQL, database -Recurse -File | Select-Object @{n='P';e={$_.FullName.Replace\\('D:\\\\Refyn\\\\',''\\)}}, @{n='KB';e={[math]::Round\\($_.Length/1KB,1\\)}} | Format-Table -AutoSize)",
+      "PowerShell(cd D:\\\\Refyn; $t = Select-String -Path SQL\\\\seed_taxonomy.sql -Pattern \"INSERT INTO topics\" | Measure-Object; $s = Select-String -Path SQL\\\\seed_taxonomy.sql -Pattern \"INSERT INTO subtopics\" | Measure-Object; \"topics rows: $\\($t.Count\\)\"; \"subtopic rows: $\\($s.Count\\)\")",
+      "Bash(git commit -q -m 'Record session tool permissions *)"
     ]
   }
 }
