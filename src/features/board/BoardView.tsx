@@ -108,7 +108,7 @@ export const BoardView = () => {
               )}
             >
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-accent font-body text-[0.6875rem] font-bold text-white">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-accent font-body text-[0.6875rem] font-bold text-accent-text">
                   {doubt.authorName.charAt(0).toUpperCase()}
                 </span>
                 <span className="font-body text-[0.8125rem] font-medium text-text-secondary">

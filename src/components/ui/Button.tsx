@@ -18,7 +18,10 @@ const buttonVariants = cva(
         // Gradient fill + coloured glow. This is the only element on a screen
         // allowed to glow, which is what keeps it reading as *the* action.
         primary:
-          'bg-gradient-accent text-white shadow-glow-soft hover:shadow-glow hover:brightness-[1.07]',
+          // text-accent-text, not text-white: on the warm theme's orange fill
+          // white sits at 2.9:1 and fails AA, so that theme swaps in a dark
+          // brown ink. Dark and light both resolve this token to white.
+          'bg-gradient-accent text-accent-text shadow-glow-soft hover:shadow-glow hover:brightness-[1.07]',
         secondary:
           'border border-border-strong bg-surface-raised text-text-primary shadow-xs hover:border-text-faint hover:bg-surface-overlay',
         ghost:

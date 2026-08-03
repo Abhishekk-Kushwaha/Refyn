@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
-import { useThemeStore } from '@/stores/themeStore';
+import { THEME_LABELS, THEME_ORDER, useThemeStore } from '@/stores/themeStore';
 import { useAuthStore } from '@/stores/authStore';
 import { Icon, type IconName } from '../ui/Icon';
 import { BrandMark } from '../ui/BrandMark';
@@ -31,6 +31,7 @@ export const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useThemeStore();
+  const nextTheme = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.session?.user);
   const isDemo = useAuthStore((state) => state.isDemo);
@@ -109,7 +110,7 @@ export const Sidebar = () => {
       {/* Footer — identity, then controls. */}
       <div className="space-y-1 border-t border-border p-3">
         <div className="mb-1 flex items-center gap-2.5 rounded-lg px-2 py-2">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-accent font-body text-xs font-bold text-white">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-accent font-body text-xs font-bold text-accent-text">
             {initial}
           </span>
           <span className="min-w-0 flex-1">
@@ -122,12 +123,14 @@ export const Sidebar = () => {
           </span>
         </div>
 
+        {/* Cycles dark → light → warm. Naming the destination rather than the
+            current state is what keeps a three-way cycle predictable. */}
         <button
           onClick={toggleTheme}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 font-body text-[0.8125rem] font-medium text-text-muted transition-colors hover:bg-surface-raised hover:text-text-primary"
         >
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} className="text-text-faint" />
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          {THEME_LABELS[nextTheme]} theme
         </button>
 
         <button

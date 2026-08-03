@@ -102,7 +102,7 @@ export const QuestionCard = ({
                 <span
                   className={clsx(
                     'grid h-7 w-7 shrink-0 place-items-center rounded-full font-body text-xs font-bold uppercase transition-colors',
-                    state === 'selected' && 'bg-gradient-accent text-white',
+                    state === 'selected' && 'bg-gradient-accent text-accent-text',
                     state === 'correct' && 'bg-success text-white',
                     state === 'missed' && 'bg-danger text-white',
                     (state === 'idle' || state === 'dimmed') &&

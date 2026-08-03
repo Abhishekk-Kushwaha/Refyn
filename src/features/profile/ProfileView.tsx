@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { aweEngine } from '@/engine/engine';
 import { useAuthStore } from '@/stores/authStore';
-import { useThemeStore } from '@/stores/themeStore';
+import { THEME_LABELS, THEME_ORDER, useThemeStore } from '@/stores/themeStore';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
 import { Button, Icon, Panel, PanelHeader, StatCard } from '@/components/ui';
 import { Page, PageHeader, PageGrid } from '@/components/layout';
@@ -74,7 +74,7 @@ export const ProfileView = () => {
             aria-hidden="true"
           />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
-            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-accent font-display text-2xl font-bold text-white shadow-glow-soft">
+            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-accent font-display text-2xl font-bold text-accent-text shadow-glow-soft">
               {displayName.charAt(0).toUpperCase()}
             </span>
 
@@ -199,13 +199,10 @@ export const ProfileView = () => {
           <Panel className="h-full">
             <PanelHeader icon="settings" title="Preferences" />
 
-            <button
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              role="switch"
-              aria-checked={theme === 'dark'}
-              className="flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-surface-raised p-4 text-left transition-colors hover:border-border-strong"
-            >
-              <span className="flex items-center gap-3">
+            {/* A segmented picker, not a switch. There are three themes now,
+                and a two-state toggle cannot say which of them is on. */}
+            <div className="rounded-lg border border-border bg-surface-raised p-4">
+              <div className="mb-3 flex items-center gap-3">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface text-text-muted">
                   <Icon name={theme === 'dark' ? 'moon' : 'sun'} size={17} />
                 </span>
@@ -214,19 +211,33 @@ export const ProfileView = () => {
                     Appearance
                   </span>
                   <span className="block font-body text-xs text-text-muted">
-                    {theme === 'dark' ? 'Dark' : 'Light'} theme
+                    {THEME_LABELS[theme]} theme
                   </span>
                 </span>
-              </span>
+              </div>
 
-              <span
-                className={`flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition-colors ${
-                  theme === 'dark' ? 'justify-end bg-accent' : 'justify-start bg-border-strong'
-                }`}
+              <div
+                role="radiogroup"
+                aria-label="Theme"
+                className="flex gap-1 rounded-lg border border-border bg-surface p-1"
               >
-                <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
-              </span>
-            </button>
+                {THEME_ORDER.map((option) => (
+                  <button
+                    key={option}
+                    role="radio"
+                    aria-checked={theme === option}
+                    onClick={() => setTheme(option)}
+                    className={`flex-1 rounded-md px-3 py-2 font-body text-xs font-semibold transition-colors ${
+                      theme === option
+                        ? 'bg-gradient-accent text-accent-text shadow-glow-soft'
+                        : 'text-text-muted hover:bg-surface-raised hover:text-text-primary'
+                    }`}
+                  >
+                    {THEME_LABELS[option]}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="mt-5 border-t border-border pt-4">
               <p className="mb-3 font-body text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-text-muted">

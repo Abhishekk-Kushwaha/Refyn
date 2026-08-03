@@ -168,7 +168,7 @@ export const FocusCard = ({ subtopic, message, loading, onDrill, drilling }: Foc
         aria-busy={drilling || undefined}
         className={clsx(
           'mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-gradient-accent',
-          'font-body text-sm font-semibold tracking-[-0.01em] text-white shadow-glow',
+          'font-body text-sm font-semibold tracking-[-0.01em] text-accent-text shadow-glow',
           'transition-[filter,transform] duration-150 ease-out-expo hover:brightness-[1.07] active:translate-y-px',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
           'disabled:pointer-events-none disabled:opacity-45',

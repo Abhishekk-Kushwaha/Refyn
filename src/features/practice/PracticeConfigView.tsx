@@ -148,7 +148,7 @@ export const PracticeConfigView = () => {
                       className={clsx(
                         'mb-3.5 grid h-9 w-9 place-items-center rounded-lg transition-colors',
                         active
-                          ? 'bg-gradient-accent text-white'
+                          ? 'bg-gradient-accent text-accent-text'
                           : 'bg-surface-raised text-text-muted group-hover:text-text-secondary'
                       )}
                     >

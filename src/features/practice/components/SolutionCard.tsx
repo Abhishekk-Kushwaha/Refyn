@@ -339,7 +339,7 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
                   <div className="relative rounded-[calc(1rem-0.5px)] bg-surface p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-accent text-white shadow-glow-soft">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-accent text-accent-text shadow-glow-soft">
                           <SparkleIcon />
                         </span>
                         <div className="min-w-0">

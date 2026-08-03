@@ -360,7 +360,8 @@ const RailStat = ({ label, value }: { label: string; value: string }) => (
 
 const gradeTones = {
   danger: 'border-danger/30 bg-danger-subtle text-danger hover:border-danger/60',
-  accent: 'border-transparent bg-gradient-accent text-white shadow-glow-soft hover:shadow-glow',
+  accent:
+    'border-transparent bg-gradient-accent text-accent-text shadow-glow-soft hover:shadow-glow',
   success: 'border-success/30 bg-success-subtle text-success hover:border-success/60',
 } as const;
 

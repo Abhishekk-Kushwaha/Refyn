@@ -1,4 +1,4 @@
-import { useThemeStore } from '@/stores/themeStore';
+import { THEME_LABELS, THEME_ORDER, useThemeStore } from '@/stores/themeStore';
 import { Icon } from '../ui/Icon';
 import { BrandMark } from '../ui/BrandMark';
 
@@ -9,6 +9,7 @@ import { BrandMark } from '../ui/BrandMark';
  */
 export const MobileHeader = () => {
   const { theme, toggleTheme } = useThemeStore();
+  const nextTheme = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
 
   return (
     <header className="sticky top-0 z-30 flex h-topbar items-center justify-between border-b border-border bg-bg/80 px-4 backdrop-blur-xl lg:hidden">
@@ -19,9 +20,12 @@ export const MobileHeader = () => {
         </span>
       </div>
 
+      {/* Three themes now, so the control cycles rather than toggles. The
+          label names where the next press lands, not where you are. */}
       <button
         onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={`Switch to ${THEME_LABELS[nextTheme].toLowerCase()} theme`}
+        title={`${THEME_LABELS[theme]} theme`}
         className="grid h-9 w-9 place-items-center rounded-lg text-text-muted transition-colors hover:bg-surface-raised hover:text-text-primary"
       >
         <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />

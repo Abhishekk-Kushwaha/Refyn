@@ -260,3 +260,127 @@
   --radar-sweep: rgba(8, 145, 178, 0.2);
   --radar-glow: rgba(79, 70, 229, 0.35);
 }
+
+/* ============================================================
+   WARM THEME — orange + serif
+   ------------------------------------------------------------
+   A second light theme, not a replacement: 'light' above is the
+   indigo one and is untouched.
+
+   Translated from a standalone stylesheet that used its own
+   vocabulary (--app-bg, --surface-border, --input-bg, --pill-*).
+   Those names are mapped onto the semantic tokens the components
+   actually read, because a variable nothing references themes
+   nothing. Three notes on what changed in translation:
+
+     1. `--surface` arrived as a linear-gradient. Here it is a flat
+        colour, because Tailwind's `bg-surface` compiles to
+        `background-color`, and a gradient in that property is
+        invalid — every card would have rendered transparent. The
+        gradient survives as --surface-sheet for anything that sets
+        `background` outright.
+     2. `--accent` takes the ink value (#ea6c00) rather than the
+        fill orange (#f97316), because this token is read as text
+        as often as it is filled. The bright orange still drives
+        every fill through --gradient-accent and the glows.
+     3. State colours (danger/success/warning) are inherited from
+        the light theme. The source defined none, and the brand
+        green is a data hue — using it to mean "correct" would
+        collide with the chart palette.
+   ============================================================ */
+[data-theme='warm'] {
+  /* Serif headlines against an Inter body — the one theme where the
+     display face is not Sora. */
+  --font-display: 'Noto Serif', ui-serif, Georgia, serif;
+  --font-heading: 'Noto Serif', ui-serif, Georgia, serif;
+
+  --bg: #f4f5f7;
+  --bg-sunken: #eceef2;
+  --surface: #ffffff;
+  --surface-raised: #fcfdff;
+  --surface-overlay: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  /* The original gradient surface, for `background` (not -color) users. */
+  --surface-sheet: linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 253, 0.98));
+
+  --border: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.11);
+  --border-highlight: rgba(255, 255, 255, 0.9);
+
+  --text-primary: rgba(12, 16, 22, 0.92);
+  --text-secondary: rgba(12, 16, 22, 0.58);
+  --text-muted: rgba(12, 16, 22, 0.36);
+  --text-faint: rgba(12, 16, 22, 0.24);
+
+  --accent: #ea6c00;
+  --accent-hover: #f97316;
+  --accent-active: #c2410c;
+  /* Dark brown on orange. White would sit at 2.9:1 and fail AA on
+     every primary button in the app. */
+  --accent-text: #431407;
+  --accent-subtle: rgba(249, 115, 22, 0.1);
+  --accent-muted: rgba(249, 115, 22, 0.2);
+
+  /* The brand green. A data hue only — charts and the radar sweep —
+     never a status. */
+  --accent-2: #34d399;
+  --accent-2-subtle: rgba(52, 211, 153, 0.14);
+
+  --danger: var(--red-600);
+  --danger-hover: var(--red-500);
+  --danger-subtle: rgba(220, 38, 38, 0.08);
+  --success: var(--green-600);
+  --success-subtle: rgba(22, 163, 74, 0.09);
+  --warning: var(--amber-600);
+  --warning-subtle: rgba(217, 119, 6, 0.1);
+  --info: var(--blue-500);
+  --info-subtle: rgba(59, 130, 246, 0.09);
+
+  --skeleton: rgba(0, 0, 0, 0.055);
+  --overlay: rgba(12, 16, 22, 0.42);
+
+  /* Held away from the orange so a topic can never be mistaken for
+     an accent or a state. */
+  --topic-a: #7c3aed;
+  --topic-b: #0891b2;
+  --topic-c: #be123c;
+  --topic-d: #4d7c0f;
+
+  /* Softer and further-thrown than the indigo light theme's, matching
+     the source's -8px/-16px spreads. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 4px -1px rgba(0, 0, 0, 0.05), 0 2px 8px -4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 10px -4px rgba(0, 0, 0, 0.07), 0 4px 16px -8px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 1px 4px -1px rgba(0, 0, 0, 0.05), 0 4px 24px -8px rgba(0, 0, 0, 0.09);
+  --shadow-xl: 0 12px 40px -16px rgba(0, 0, 0, 0.13), 0 2px 8px -2px rgba(0, 0, 0, 0.06);
+
+  --glow-accent: 0 0 0 1px rgba(249, 115, 22, 0.3), 0 8px 20px -8px rgba(249, 115, 22, 0.5);
+  --glow-accent-soft: 0 6px 18px -8px rgba(249, 115, 22, 0.4);
+
+  --gradient-accent: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  --gradient-accent-soft: linear-gradient(
+    135deg,
+    rgba(249, 115, 22, 0.12) 0%,
+    rgba(251, 146, 60, 0.04) 100%
+  );
+  --gradient-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --gradient-text: linear-gradient(
+    120deg,
+    rgba(12, 16, 22, 0.92) 0%,
+    rgba(12, 16, 22, 0.58) 100%
+  );
+
+  /* Barely there. The source page is a flat wash with one soft band at
+     the top, so the aurora is dialled well below the other themes'. */
+  --aurora-1: rgba(249, 115, 22, 0.07);
+  --aurora-2: rgba(251, 146, 60, 0.05);
+  --aurora-3: rgba(52, 211, 153, 0.05);
+  --grid-line: rgba(0, 0, 0, 0.028);
+
+  --radar-sweep: rgba(52, 211, 153, 0.22);
+  --radar-glow: rgba(249, 115, 22, 0.35);
+}

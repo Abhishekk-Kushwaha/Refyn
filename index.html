@@ -7,10 +7,13 @@
     <meta name="theme-color" content="#08080c" />
     <title>REFYN — Hunt your weakness</title>
 
-    <!-- Prevent theme flash -->
+    <!-- Prevent theme flash. Validated against the known themes: an unknown
+         value matches no [data-theme] block and renders the app with no
+         tokens at all. -->
     <script>
       (function() {
-        const theme = localStorage.getItem('refyn-theme') || 'dark';
+        var stored = localStorage.getItem('refyn-theme');
+        var theme = ['dark', 'light', 'warm'].indexOf(stored) !== -1 ? stored : 'dark';
         document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>
@@ -19,7 +22,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Serif:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
   </head>

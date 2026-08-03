@@ -133,7 +133,7 @@ export const OnboardingView = () => {
                           'grid h-[46px] w-[46px] shrink-0 place-items-center rounded-xl font-display font-bold',
                           exam.badge.length > 3 ? 'text-xs' : 'text-[0.9375rem]',
                           selected
-                            ? 'bg-gradient-accent text-white shadow-glow-soft'
+                            ? 'bg-gradient-accent text-accent-text shadow-glow-soft'
                             : 'bg-surface-overlay text-text-muted'
                         )}
                       >
@@ -150,7 +150,7 @@ export const OnboardingView = () => {
                       </span>
 
                       {selected && (
-                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-white">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-accent-text">
                           <Icon name="check" size={14} strokeWidth={3} />
                         </span>
                       )}

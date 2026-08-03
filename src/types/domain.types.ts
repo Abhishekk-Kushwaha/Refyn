@@ -1,4 +1,13 @@
-export type Theme = 'dark' | 'light';
+/**
+ * `warm` is a second light theme — orange accent, serif headlines — not a
+ * replacement for `light`.
+ *
+ * NOTE: profiles.theme_preference still carries a
+ * `CHECK (theme_preference IN ('dark','light'))` constraint. Nothing writes
+ * that column yet, so this is inert yet — but run
+ * SQL/widen_theme_preference.sql before anything does.
+ */
+export type Theme = 'dark' | 'light' | 'warm';
 
 export type ExamSlug = 'cat' | 'ssc-cgl' | 'gmat' | 'gre';
 
