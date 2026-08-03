@@ -123,7 +123,12 @@
       "Bash(pwd; echo *)",
       "Bash(curl -s -i -X POST \"https://nxykkxqfipvzvlwpyszl.supabase.co/functions/v1/ai-explain\" -H \"Content-Type: application/json\" -d '{\"questionText\":\"x\",\"correctAnswer\":\"1\"}' --max-time 30)",
       "Bash(timeout 300 npx vitest run --reporter=dot src/components/ui/__tests__/MathText.test.tsx)",
-      "Bash(timeout 240 npx supabase functions deploy ai-explain --no-verify-jwt)"
+      "Bash(timeout 240 npx supabase functions deploy ai-explain --no-verify-jwt)",
+      "PowerShell(npm run type-check 2>&1)",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell(npm test 2>&1)",
+      "PowerShell(Get-ChildItem -Path D:\\\\Refyn\\\\src -Recurse -File | Select-Object @{n='Path';e={$_.FullName.Replace\\('D:\\\\Refyn\\\\',''\\)}}, @{n='KB';e={[math]::Round\\($_.Length/1KB,1\\)}} | Sort-Object Path | Format-Table -AutoSize)",
+      "PowerShell($f='C:\\\\Users\\\\Lenovo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Refyn\\\\bd04b146-6aff-436a-b4b1-500254e76dbd\\\\scratchpad\\\\design.html'; \\(Get-Content $f | Measure-Object -Line\\).Lines)"
     ]
   }
 }
