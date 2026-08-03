@@ -294,17 +294,31 @@
   --font-display: 'Noto Serif', ui-serif, Georgia, serif;
   --font-heading: 'Noto Serif', ui-serif, Georgia, serif;
 
-  --bg: #f4f5f7;
-  --bg-sunken: #eceef2;
+  /* Paper white, with no warmth in it at all. The orange lives in the
+     actions — fills, glows, the focus ring — and nowhere else, so the
+     page itself stays a neutral sheet. */
+  --bg: #ffffff;
+  --bg-sunken: #f7f8f9;
   --surface: #ffffff;
-  --surface-raised: #fcfdff;
-  --surface-overlay: #ffffff;
+  /* Neutral greys, not the source's #fcfdff — that carries a blue cast
+     which reads as a tint against a pure-white page. */
+  --surface-raised: #f7f8f9;
+  /* The groove behind every progress bar and sparkbar. This is the
+     source's --progress-track, and it must stay visibly darker than the
+     card it sits on: at #ffffff the tracks were white on white and no
+     bar had a visible remainder. */
+  --surface-overlay: #e8e9eb;
   --surface-glass: rgba(255, 255, 255, 0.85);
   /* The original gradient surface, for `background` (not -color) users. */
   --surface-sheet: linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 253, 0.98));
 
-  --border: rgba(0, 0, 0, 0.07);
-  --border-strong: rgba(0, 0, 0, 0.11);
+  /* Firmer than the source's 0.07 / 0.11, and deliberately so. Those were
+     drawn against a grey #f4f5f7 page, where a white card separated itself
+     by fill alone and the border was only a seam. On a white page that
+     contrast is gone — the border is the only thing left holding a card,
+     and at 7% it disappeared. */
+  --border: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.16);
   --border-highlight: rgba(255, 255, 255, 0.9);
 
   --text-primary: rgba(12, 16, 22, 0.92);
@@ -374,12 +388,14 @@
     rgba(12, 16, 22, 0.58) 100%
   );
 
-  /* Barely there. The source page is a flat wash with one soft band at
-     the top, so the aurora is dialled well below the other themes'. */
-  --aurora-1: rgba(249, 115, 22, 0.07);
-  --aurora-2: rgba(251, 146, 60, 0.05);
-  --aurora-3: rgba(52, 211, 153, 0.05);
-  --grid-line: rgba(0, 0, 0, 0.028);
+  /* Off, both of them. The other two themes float their content over an
+     ambient wash and a hairline grid; this one is a plain white sheet by
+     design, and an orange aurora is exactly the tint it must not have.
+     The elements still mount — they simply paint nothing. */
+  --aurora-1: transparent;
+  --aurora-2: transparent;
+  --aurora-3: transparent;
+  --grid-line: transparent;
 
   --radar-sweep: rgba(52, 211, 153, 0.22);
   --radar-glow: rgba(249, 115, 22, 0.35);
