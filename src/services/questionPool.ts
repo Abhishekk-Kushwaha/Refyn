@@ -30,6 +30,7 @@ interface QuestionRow {
   subtopics: {
     id: string;
     name: string;
+    concept_code: string | null;
     frequency_weight: number | null;
     topics: { name: string; topic_weight: number | null } | null;
   } | null;
@@ -50,6 +51,7 @@ interface ReplicaRow {
   subtopics: {
     id: string;
     name: string;
+    concept_code: string | null;
     frequency_weight: number | null;
     topics: { name: string; topic_weight: number | null } | null;
   } | null;
@@ -80,6 +82,7 @@ const mapQuestionRow = (row: QuestionRow): MockQuestion | null => {
     expectedTimeSeconds: row.expected_time_seconds ?? 90,
     frequencyWeight: row.subtopics.frequency_weight ?? undefined,
     topicWeight: row.subtopics.topics?.topic_weight ?? undefined,
+    conceptCode: row.subtopics.concept_code ?? undefined,
   };
 };
 
@@ -104,10 +107,13 @@ const mapReplicaRow = (row: ReplicaRow): MockQuestion | null => {
     parentQuestionId: row.parent_question_id ?? undefined,
     frequencyWeight: row.subtopics.frequency_weight ?? undefined,
     topicWeight: row.subtopics.topics?.topic_weight ?? undefined,
+    conceptCode: row.subtopics.concept_code ?? undefined,
   };
 };
 
-const SUBTOPIC_SELECT = 'id, name, frequency_weight, topics(name, topic_weight)';
+// concept_code rides along on the existing join — one extra column, no new
+// query. Its prefix is what resolves a concept into its group (conceptGroups.ts).
+const SUBTOPIC_SELECT = 'id, name, concept_code, frequency_weight, topics(name, topic_weight)';
 
 /** Load and cache the real bank for a signed-in user. */
 export const configureQuestionPoolSupabase = async (examSlug: string): Promise<void> => {

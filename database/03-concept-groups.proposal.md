@@ -1,6 +1,12 @@
 # Concept groups — the missing middle tier
 
-**Status: proposal. Nothing has been migrated. Edit this file, then hand it back.**
+**Status: shipped in the client, not in the database.** The grouping below is
+live in `src/lib/conceptGroups.ts`, resolved from `concept_code` prefixes at
+read time. No schema change was needed. Correcting a group is a one-line edit
+to that file — the names and boundaries here are still open to review.
+
+A `topic_groups` table remains the better long-term home (display_order, no
+string parsing, groups queryable server-side). The plan for that is at the end.
 
 ## Why
 
@@ -130,15 +136,37 @@ Renaming the tables themselves would touch the engine, the seed, every service
 and the RLS policies, so the mapping is proposed to live in the read model
 instead. Flag it if you would rather pay for the rename now.
 
-## What this unblocks, once approved
+## How it actually shipped
+
+No migration. `concept_code` was already a column on `subtopics` — it was simply
+never selected. Adding it to the existing join gave the whole tier client-side:
+
+1. `questionPool.ts` selects `concept_code` on the join it already ran, and
+   carries it as `MockQuestion.conceptCode`.
+2. `lib/conceptGroups.ts` holds the 33 groups and matches a code to one by
+   longest prefix, so `ALG_LOG_EQ` beats `ALG_LOG`. The mock bank's ten
+   concepts map through `MOCK_CONCEPT_CODES`, so demo mode keeps the tier.
+3. `weakness.service.ts` resolves the group at read time and nests the ranking
+   into `sections → groups → subtopics`. Nothing was added to `ConceptMastery`,
+   so no persisted state changed and nobody's existing profile needed a
+   backfill.
+4. The dashboard lists sections; `/weakness/:section` lists its groups;
+   `/weakness/:section/:group` lists its concepts.
+
+### The `AVG_` group
+
+The mock bank carries an `Averages` concept that has no counterpart in the
+seeded 126 — the real taxonomy has `Average Speed` under TSD, but no standalone
+Averages. An `AVG_` group exists so demo mode does not drop it into Other. If
+Averages is meant to be a real subtopic, it needs a seed row; if not, the group
+is harmless and stays empty for signed-in users.
+
+## Still worth doing later
 
 1. `topic_groups` table (`id`, `topic_id`, `name`, `slug`, `display_order`) and
-   a nullable `group_id` on `subtopics`.
-2. Seed the 33 groups; backfill `subtopics.group_id` from the `concept_code`
-   prefixes above. Nullable so an unmapped concept degrades to ungrouped rather
-   than disappearing.
-3. Carry the group through `questionPool`'s join → `MockQuestion` → the engine's
-   `ConceptMastery` → `weakness.service`. The mock bank needs the same field so
-   demo mode does not lose the tier.
-4. Dashboard shows sections; a section drills to a group page; a group drills to
-   its concepts.
+   a nullable `group_id` on `subtopics`, backfilled from the same prefixes.
+2. That would make groups queryable server-side (needed the moment a query
+   wants "all weak concepts in Trigonometry" without loading the pool), give
+   them an explicit display order, and drop the string parsing.
+
+Neither is urgent. The prefix map is the same data, read a different way.

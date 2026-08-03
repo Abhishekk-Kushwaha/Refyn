@@ -14,7 +14,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { getQuestionsForSubtopic } from '@/services/questions.service';
 import { SubtopicWeakness } from '@/services/weakness.service';
 import { WeaknessRadar } from './components/WeaknessRadar';
-import { LedgerRow } from './components/LedgerRow';
+import { TierRow } from './components/TierRow';
 import { FocusCard } from './components/FocusCard';
 import { SkipPanel } from './components/SkipPanel';
 import { TopicTimePanel } from './components/TopicTimePanel';
@@ -236,22 +236,26 @@ export const DashboardView = () => {
             )}
           </PageGrid>
 
-          {/* ---- The ledger --------------------------------------------- */}
+          {/* ---- The ledger ---------------------------------------------
+              Sections, not concepts. A real profile spans 126 concepts, and
+              listing them flat produced a wall nobody reads — the ranking
+              only means something if you can see the whole of it. Each row
+              opens its topics, and those open their concepts. */}
           <Section
             title="Ranked by weakness"
-            aside={`${data.subtopics.length} subtopic${data.subtopics.length === 1 ? '' : 's'}`}
+            aside={`${data.sections.length} section${data.sections.length === 1 ? '' : 's'} · ${data.subtopics.length} concepts`}
           >
-            {/* One column is what makes this read as a ranking. It only fans
-                out once the viewport is wide enough that a single column
-                would leave the board half-empty. */}
             <div className="grid grid-cols-1 gap-2 xl:grid-cols-2 xl:gap-x-5">
-              {data.subtopics.map((subtopic, i) => (
-                <LedgerRow
-                  key={subtopic.subtopicId}
-                  subtopic={subtopic}
+              {data.sections.map((section, i) => (
+                <TierRow
+                  key={section.slug}
                   index={i}
-                  onDrill={handleDrill}
-                  drilling={drillingId === subtopic.subtopicId}
+                  name={section.name}
+                  accuracy={section.accuracy}
+                  attempts={section.attempts}
+                  conceptCount={section.conceptCount}
+                  weakCount={section.weakCount}
+                  to={`/weakness/${section.slug}`}
                 />
               ))}
             </div>

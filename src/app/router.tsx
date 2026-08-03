@@ -15,6 +15,7 @@ const BoardView = lazy(() => import('@/features/board/BoardView').then((m) => ({
 const NewDoubtView = lazy(() => import('@/features/board/NewDoubtView').then((m) => ({ default: m.NewDoubtView })));
 const DoubtThreadView = lazy(() => import('@/features/board/DoubtThreadView').then((m) => ({ default: m.DoubtThreadView })));
 const ProfileView = lazy(() => import('@/features/profile/ProfileView').then((m) => ({ default: m.ProfileView })));
+const WeaknessDrillView = lazy(() => import('@/features/weakness/WeaknessDrillView').then((m) => ({ default: m.WeaknessDrillView })));
 const AppLayout = lazy(() => import('@/components/layout/AppLayout').then((m) => ({ default: m.AppLayout })));
 // Design-system reference page. Public on purpose so the kit can be reviewed
 // without a session. Delete this line + its route once the screens are restyled.
@@ -83,6 +84,16 @@ const shellRoutes = [
           {
             path: '/dashboard',
             element: <LazyComponent component={<DashboardView />} />,
+          },
+          // Weakness drill-down. One view, two depths: a section lists its
+          // concept groups, a group lists its concepts.
+          {
+            path: '/weakness/:section',
+            element: <LazyComponent component={<WeaknessDrillView />} />,
+          },
+          {
+            path: '/weakness/:section/:group',
+            element: <LazyComponent component={<WeaknessDrillView />} />,
           },
           {
             path: '/practice',

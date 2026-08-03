@@ -21,6 +21,12 @@ export interface MockQuestion {
   // the question lets the engine weight real UUID-keyed concepts correctly.
   frequencyWeight?: number;
   topicWeight?: number;
+  /**
+   * The taxonomy's concept_code, e.g. 'TSD_RELATIVE'. Its prefix names the
+   * concept group the subtopic belongs to — see lib/conceptGroups.ts. Absent on
+   * mock questions, which are resolved from MOCK_CONCEPT_CODES instead.
+   */
+  conceptCode?: string;
 }
 
 export const MOCK_QUESTIONS: MockQuestion[] = [
