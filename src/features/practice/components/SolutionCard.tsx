@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { MockQuestion } from '@/lib/mockQuestions';
 import { AnswerRecord } from '@/stores/sessionStore';
 import { getErrorMessage } from '@/lib/errors';
-import { MathText } from '@/components/ui';
+import { Icon, MathText } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import {
   AI_SIGN_IN_MESSAGE,
@@ -27,7 +27,7 @@ const SparkleIcon = ({ className }: { className?: string }) => (
     viewBox="0 0 24 24"
     fill="currentColor"
     aria-hidden="true"
-    className={clsx('w-4 h-4', className)}
+    className={clsx('h-4 w-4', className)}
   >
     <path d="M12 2l1.9 5.6L19.5 9.5 13.9 11.4 12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2z" />
     <path d="M18.5 14.5l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9.9-2.6z" opacity="0.7" />
@@ -35,20 +35,32 @@ const SparkleIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const ChevronIcon = ({ open }: { open: boolean }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-    className={clsx('w-4 h-4 transition-transform duration-200', open && 'rotate-180')}
-  >
-    <path d="M6 9l6 6 6-6" />
-  </svg>
-);
+/**
+ * Splits the model's plain-text answer into renderable blocks.
+ *
+ * The endpoint promises "plain text with simple line breaks" and nothing more,
+ * so the numbered treatment is applied only when the model actually numbered
+ * its own steps. Inventing the structure — drawing step circles around
+ * arbitrary line breaks — would dress up prose as reasoning it never claimed.
+ */
+interface Block {
+  n: string | null;
+  text: string;
+}
+
+const LEADING_NUMBER = /^(?:step\s*)?(\d{1,2})\s*[.):-]\s+/i;
+
+const parseBlocks = (explanation: string): Block[] =>
+  explanation
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = LEADING_NUMBER.exec(line);
+      return match
+        ? { n: match[1], text: line.slice(match[0].length) }
+        : { n: null, text: line };
+    });
 
 export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -73,13 +85,11 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
     wrong: 'bg-danger-subtle text-danger',
     skipped: 'bg-surface-raised text-text-muted',
   }[status];
-
-  const answerText = (key: string | null) => {
-    if (key === null) return '—';
-    if (question.questionType === 'tita' || !question.options) return key;
-    const option = question.options[key as keyof typeof question.options];
-    return option ? `${key.toUpperCase()}. ${option}` : key;
-  };
+  const edgeClass = {
+    correct: 'border-l-success',
+    wrong: 'border-l-danger',
+    skipped: 'border-l-border-strong',
+  }[status];
 
   const handleExplain = async () => {
     setAiError(null);
@@ -96,48 +106,58 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
     }
   };
 
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-surface">
-      <span
-        className={clsx(
-          'absolute inset-y-0 left-0 w-[3px]',
-          status === 'correct'
-            ? 'bg-success'
-            : status === 'wrong'
-            ? 'bg-danger'
-            : 'bg-border-strong'
-        )}
-        aria-hidden="true"
-      />
+  const blocks = explanation ? parseBlocks(explanation) : [];
 
+  return (
+    <div
+      className={clsx(
+        'overflow-hidden rounded-xl border border-l-[3px] border-border bg-surface',
+        edgeClass
+      )}
+    >
       {/* Header — always visible, toggles the solution */}
       <button
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
-        className="flex w-full items-start gap-3 p-4 pl-5 text-left transition-colors hover:bg-surface-raised"
+        className="flex w-full items-start gap-3 p-3.5 text-left transition-colors hover:bg-surface-raised"
       >
-        <span className="mt-0.5 flex-shrink-0 font-mono text-xs font-bold tabular-nums text-text-faint">
+        <span className="mt-px shrink-0 font-mono text-[0.6875rem] font-bold tabular-nums text-text-faint">
           Q{index + 1}
         </span>
-        <span className="flex-1 min-w-0">
-          <span className={clsx('block text-sm text-text-primary', !isOpen && 'truncate')}>
+
+        <span className="min-w-0 flex-1">
+          <span
+            className={clsx(
+              'block font-body text-[0.8125rem] leading-snug text-text-primary',
+              !isOpen && 'truncate'
+            )}
+          >
             <MathText>{question.questionText}</MathText>
           </span>
-          <span className="mt-2 flex items-center gap-2">
+          <span className="mt-1.5 flex items-center gap-2">
             <span
               className={clsx(
-                'rounded-full px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em]',
+                'rounded-full px-2 py-0.5 font-body text-[0.59375rem] font-bold uppercase tracking-[0.06em]',
                 statusClass
               )}
             >
               {statusLabel}
             </span>
-            <span className="text-[0.6875rem] text-text-faint">{question.subtopicName}</span>
+            <span className="truncate font-body text-[0.625rem] text-text-muted">
+              {question.subtopicName}
+            </span>
           </span>
         </span>
-        <span className="text-text-muted flex-shrink-0 mt-0.5">
-          <ChevronIcon open={isOpen} />
-        </span>
+
+        <Icon
+          name="chevronDown"
+          size={16}
+          strokeWidth={2.2}
+          className={clsx(
+            'mt-px shrink-0 text-text-muted transition-transform duration-200',
+            isOpen && 'rotate-180'
+          )}
+        />
       </button>
 
       <AnimatePresence initial={false}>
@@ -149,15 +169,15 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border px-4 pb-4 pl-5 pt-1">
-              {/* Full question text (header truncates it) */}
-              <p className="text-sm text-text-primary leading-relaxed mt-3 mb-4">
+            <div className="border-t border-border px-3.5 pb-4 pt-4">
+              {/* Full question text (the header truncates it) */}
+              <p className="mb-4 font-body text-[0.96875rem] leading-[1.5] text-text-primary">
                 <MathText>{question.questionText}</MathText>
               </p>
 
               {/* MCQ options with correct / chosen markers */}
               {question.questionType === 'mcq' && question.options && (
-                <div className="space-y-2 mb-4">
+                <div className="mb-4 flex flex-col gap-2">
                   {optionKeys.map((key) => {
                     const isRight = question.correctAnswer.trim().toLowerCase() === key;
                     const isChosen = answer?.selectedAnswer === key;
@@ -165,21 +185,53 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
                       <div
                         key={key}
                         className={clsx(
-                          'flex items-center gap-2 p-2.5 rounded-md border text-sm',
+                          'flex items-center gap-2.5 rounded-xl border p-3',
                           isRight
-                            ? 'border-success bg-success-subtle text-text-primary'
+                            ? 'border-success bg-success-subtle'
                             : isChosen
-                            ? 'border-danger bg-danger-subtle text-text-primary'
-                            : 'border-border text-text-muted'
+                            ? 'border-danger bg-danger-subtle'
+                            : 'border-border'
                         )}
                       >
-                        <span className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold uppercase flex-shrink-0">
-                          {key}
+                        <span
+                          className={clsx(
+                            'grid h-5 w-5 shrink-0 place-items-center rounded-full font-body text-[0.625rem] font-bold uppercase',
+                            isRight
+                              ? 'bg-success text-white'
+                              : isChosen
+                              ? 'bg-danger text-white'
+                              : 'border border-border-strong text-text-muted'
+                          )}
+                        >
+                          {isRight ? (
+                            <Icon name="check" size={12} strokeWidth={3} />
+                          ) : isChosen ? (
+                            <Icon name="close" size={11} strokeWidth={3} />
+                          ) : (
+                            key
+                          )}
                         </span>
-                        <span className="flex-1"><MathText>{question.options![key]}</MathText></span>
-                        {isRight && <span className="text-xs font-semibold text-success">Correct</span>}
+
+                        <span
+                          className={clsx(
+                            'min-w-0 flex-1 font-body text-[0.84375rem]',
+                            isRight || isChosen
+                              ? 'font-medium text-text-primary'
+                              : 'text-text-muted'
+                          )}
+                        >
+                          <MathText>{question.options![key]}</MathText>
+                        </span>
+
+                        {isRight && (
+                          <span className="shrink-0 font-body text-[0.625rem] font-bold uppercase tracking-[0.06em] text-success">
+                            Correct
+                          </span>
+                        )}
                         {isChosen && !isRight && (
-                          <span className="text-xs font-semibold text-danger">Your answer</span>
+                          <span className="shrink-0 font-body text-[0.625rem] font-bold uppercase tracking-[0.06em] text-danger">
+                            Your answer
+                          </span>
                         )}
                       </div>
                     );
@@ -189,88 +241,159 @@ export const SolutionCard = ({ question, answer, index }: SolutionCardProps) => 
 
               {/* TITA — no options to mark up, so show the two values side by side */}
               {question.questionType === 'tita' && (
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="bg-surface-raised rounded-md p-3">
-                    <div className="text-[10px] text-text-muted uppercase tracking-wide mb-1">
+                <div className="mb-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-surface-raised p-3">
+                    <div className="mb-1 font-body text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-text-muted">
                       Your answer
                     </div>
-                    <div className={clsx('font-mono text-sm', isCorrect ? 'text-success' : 'text-danger')}>
-                      {answerText(answer?.selectedAnswer ?? null)}
+                    <div
+                      className={clsx(
+                        'font-mono text-sm font-semibold',
+                        isCorrect ? 'text-success' : 'text-danger'
+                      )}
+                    >
+                      {answer?.selectedAnswer ?? '—'}
                     </div>
                   </div>
-                  <div className="bg-surface-raised rounded-md p-3">
-                    <div className="text-[10px] text-text-muted uppercase tracking-wide mb-1">
+                  <div className="rounded-xl bg-surface-raised p-3">
+                    <div className="mb-1 font-body text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-text-muted">
                       Correct answer
                     </div>
-                    <div className="font-mono text-sm text-success">{question.correctAnswer}</div>
+                    <div className="font-mono text-sm font-semibold text-success">
+                      {question.correctAnswer}
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Authored solution */}
-              <div className="bg-surface-raised rounded-md p-3 mb-3">
-                <div className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-1.5">
+              <div className="mb-3.5 rounded-xl border border-border bg-surface-raised p-3.5">
+                <div className="mb-1.5 font-body text-[0.59375rem] font-bold uppercase tracking-[0.14em] text-text-muted">
                   Solution
                 </div>
-                <p className="text-sm text-text-primary leading-relaxed whitespace-pre-line">
-                  <MathText>{question.solution || 'A written solution has not been added for this question yet.'}</MathText>
+                <p className="whitespace-pre-line font-body text-[0.8125rem] leading-[1.6] text-text-secondary">
+                  <MathText>
+                    {question.solution ||
+                      'A written solution has not been added for this question yet.'}
+                  </MathText>
                 </p>
               </div>
 
               {/* AI explanation — button is live now, the model plugs in behind ai.service */}
-              <button
-                onClick={handleExplain}
-                disabled={isLoadingAi || !canUseAi}
-                className={clsx(
-                  'w-full flex items-center gap-2 p-2.5 rounded-md border border-accent bg-accent-subtle',
-                  'text-accent text-sm font-semibold transition-all hover:border-accent',
-                  'disabled:opacity-60 disabled:cursor-not-allowed'
-                )}
-              >
-                {isLoadingAi ? (
-                  <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                ) : (
-                  <SparkleIcon className="flex-shrink-0" />
-                )}
-                <span className="flex-1 text-left">
-                  {!canUseAi
-                    ? 'Sign in to see the AI explanation'
-                    : explanation
-                    ? 'Regenerate AI explanation'
-                    : 'Explain with AI'}
-                </span>
-                {!aiReady && (
-                  <span className="text-[10px] font-semibold uppercase tracking-wide bg-surface px-1.5 py-0.5 rounded">
-                    Soon
+              {!explanation && (
+                <button
+                  onClick={handleExplain}
+                  disabled={isLoadingAi || !canUseAi}
+                  className={clsx(
+                    'flex w-full items-center gap-2 rounded-xl border border-accent-muted bg-accent-subtle p-3',
+                    'font-body text-[0.8125rem] font-semibold text-accent transition-colors hover:border-accent',
+                    'disabled:cursor-not-allowed disabled:opacity-60'
+                  )}
+                >
+                  {isLoadingAi ? (
+                    <span className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <SparkleIcon className="shrink-0" />
+                  )}
+                  <span className="flex-1 text-left">
+                    {!canUseAi
+                      ? 'Sign in to see the AI explanation'
+                      : isLoadingAi
+                      ? 'Refyn AI is working…'
+                      : 'Explain with Refyn AI'}
                   </span>
-                )}
-                {aiReady && !canUseAi && (
-                  <span className="text-[10px] font-semibold uppercase tracking-wide bg-surface px-1.5 py-0.5 rounded">
-                    Sign in
-                  </span>
-                )}
-              </button>
-
-              {!canUseAi && (
-                <p className="text-xs text-text-muted mt-2">{AI_SIGN_IN_MESSAGE}</p>
+                  {!aiReady && (
+                    <span className="rounded bg-surface px-1.5 py-0.5 font-body text-[0.625rem] font-semibold uppercase tracking-wide">
+                      Soon
+                    </span>
+                  )}
+                  {aiReady && !canUseAi && (
+                    <span className="rounded bg-surface px-1.5 py-0.5 font-body text-[0.625rem] font-semibold uppercase tracking-wide">
+                      Sign in
+                    </span>
+                  )}
+                </button>
               )}
 
-              {aiError && <p className="text-xs text-text-muted mt-2">{aiError}</p>}
+              {!canUseAi && !explanation && (
+                <p className="mt-2 font-body text-xs text-text-muted">{AI_SIGN_IN_MESSAGE}</p>
+              )}
 
+              {aiError && <p className="mt-2 font-body text-xs text-text-muted">{aiError}</p>}
+
+              {/* The AI answer, in a gradient-lit panel. The border is a
+                  1.5px gradient sheet with the surface laid back over it —
+                  a `border-image` can't be rounded, and a ring can't be a
+                  three-stop gradient. */}
               {explanation && (
-                <div className="mt-3 rounded-md border border-accent bg-accent-subtle p-3">
-                  <div className="flex items-center gap-1.5 text-accent text-[10px] uppercase tracking-widest font-semibold mb-1.5">
-                    <SparkleIcon className="w-3 h-3" />
-                    AI explanation
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  className="relative rounded-2xl p-[1.5px] shadow-glow-soft"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, var(--indigo-500), var(--violet-500) 45%, var(--cyan-400))',
+                  }}
+                >
+                  <div className="relative rounded-[calc(1rem-0.5px)] bg-surface p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-accent text-white shadow-glow-soft">
+                          <SparkleIcon />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="font-body text-[0.8125rem] font-bold tracking-[-0.01em] text-text-primary">
+                            Refyn AI
+                          </div>
+                          <div className="truncate font-body text-[0.625rem] font-medium text-text-muted">
+                            {isCorrect
+                              ? 'What makes it faster next time'
+                              : skipped
+                              ? 'How to open this one'
+                              : 'Why you fell for the trap'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-accent-subtle px-2.5 py-1 font-body text-[0.59375rem] font-semibold uppercase tracking-[0.06em] text-accent">
+                        Personalised
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5">
+                      {blocks.map((block, i) => (
+                        <div key={i} className="flex gap-2.5">
+                          {block.n && (
+                            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent-subtle font-mono text-[0.6875rem] font-bold text-accent">
+                              {block.n}
+                            </span>
+                          )}
+                          <p
+                            className={clsx(
+                              'font-body text-[0.8125rem] leading-[1.55] text-text-secondary',
+                              !block.n && 'w-full'
+                            )}
+                          >
+                            <MathText>{block.text}</MathText>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleExplain}
+                      disabled={isLoadingAi}
+                      className="mt-3.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface-raised font-body text-[0.78125rem] font-semibold text-text-secondary transition-colors hover:border-text-faint disabled:opacity-60"
+                    >
+                      {isLoadingAi ? (
+                        <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <Icon name="refresh" size={14} strokeWidth={2.2} />
+                      )}
+                      Ask again
+                    </button>
                   </div>
-                  {/* The model writes maths in the same plain-text shorthand
-                      the question bank uses, so it gets the same rendering the
-                      question above it does. whitespace-pre-line is inherited
-                      through the span, so the model's line breaks survive. */}
-                  <p className="text-sm text-text-primary leading-relaxed whitespace-pre-line">
-                    <MathText>{explanation}</MathText>
-                  </p>
-                </div>
+                </motion.div>
               )}
             </div>
           </motion.div>

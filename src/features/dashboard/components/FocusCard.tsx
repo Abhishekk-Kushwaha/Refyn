@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Button, Eyebrow, Icon } from '@/components/ui';
+import clsx from 'clsx';
+import { Icon } from '@/components/ui';
 import { SubtopicWeakness, WeaknessBand } from '@/services/weakness.service';
 
 interface FocusCardProps {
@@ -39,6 +40,16 @@ const bandLabel: Record<WeaknessBand, string> = {
   untested: 'Blind spot',
 };
 
+/** The band label is the one place on this card allowed to raise an alarm. */
+const bandTone: Record<WeaknessBand, string> = {
+  critical: 'text-danger',
+  weak: 'text-danger',
+  learning: 'text-info',
+  improving: 'text-accent',
+  strong: 'text-success',
+  untested: 'text-text-muted',
+};
+
 /** One figure with its caption. Keeps the metric row on a single baseline. */
 const Metric = ({
   value,
@@ -51,13 +62,14 @@ const Metric = ({
 }) => (
   <div className="min-w-0">
     <div
-      className={`font-display text-xl font-bold leading-none tracking-[-0.03em] tabular-nums ${
+      className={clsx(
+        'font-mono text-[1.0625rem] font-bold leading-none tracking-[-0.02em] tabular-nums',
         tone === 'danger' ? 'text-danger' : 'text-text-primary'
-      }`}
+      )}
     >
       {value}
     </div>
-    <div className="mt-1.5 truncate font-body text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-text-faint">
+    <div className="mt-1.5 truncate font-body text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-text-faint">
       {label}
     </div>
   </div>
@@ -68,27 +80,28 @@ export const FocusCard = ({ subtopic, message, loading, onDrill, drilling }: Foc
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-    className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-accent-muted bg-surface p-6 shadow-lg lg:p-8"
+    className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-accent-muted p-5 lg:p-6"
+    style={{
+      // The lit field the card sits in. Deliberately a plain vertical wash
+      // rather than the 135° brand gradient: this panel sits next to the
+      // gradient CTA it contains, and two gradients fight.
+      background:
+        'linear-gradient(180deg, rgba(99,102,241,0.10) 0%, rgba(99,102,241,0.03) 100%)',
+    }}
   >
-    {/* Accent field behind the hero. Sits under the content, never over it. */}
-    <div
-      className="pointer-events-none absolute inset-0 bg-gradient-accent-soft"
-      aria-hidden="true"
-    />
-    <div
-      className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-accent/20 blur-[90px]"
-      aria-hidden="true"
-    />
-
     <div className="relative flex flex-1 flex-col">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent-muted bg-accent-subtle px-2.5 py-1">
-          <Icon name="spark" size={12} className="text-accent" />
-          <Eyebrow className="text-accent">Today&rsquo;s focus</Eyebrow>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="font-body text-[0.6875rem] font-bold uppercase tracking-[0.13em] text-accent">
+          Today&rsquo;s focus
         </span>
-        <Eyebrow className="text-text-muted">
+        <span
+          className={clsx(
+            'font-body text-[0.65625rem] font-bold uppercase tracking-[0.1em]',
+            loading ? 'text-text-muted' : bandTone[subtopic.band]
+          )}
+        >
           {loading ? 'Analysing' : bandLabel[subtopic.band]}
-        </Eyebrow>
+        </span>
       </div>
 
       {/* Nothing about the concept is shown until the choice is final. The model
@@ -96,23 +109,27 @@ export const FocusCard = ({ subtopic, message, loading, onDrill, drilling }: Foc
           rendering the engine's pick first would flash one topic and then swap
           it for another, which reads as a glitch. */}
       {loading ? (
-        <div className="flex-1 space-y-3" aria-hidden>
-          <div className="skeleton h-9 w-3/5 rounded-lg" />
+        <div className="mt-3 flex-1 space-y-3" aria-hidden>
+          <div className="skeleton h-7 w-3/5 rounded-lg" />
           <div className="skeleton h-3 w-2/5 rounded" />
-          <div className="skeleton mt-6 h-3 w-full rounded" />
+          <div className="skeleton mt-5 h-3 w-full rounded" />
           <div className="skeleton h-3 w-4/5 rounded" />
         </div>
       ) : (
         <div className="flex-1">
-          <p className="mb-1.5 font-body text-xs font-semibold uppercase tracking-[0.1em] text-text-muted">
-            {subtopic.topicName}
-          </p>
-
-          <h2 className="text-balance font-display text-[1.75rem] font-bold leading-[1.1] tracking-[-0.03em] text-text-primary lg:text-[2.125rem]">
+          <h2 className="mt-1.5 text-balance font-heading text-xl font-semibold tracking-[-0.01em] text-text-primary lg:text-2xl">
             {subtopic.subtopicName}
           </h2>
 
-          <p className="mt-4 max-w-prose font-body text-[0.9375rem] leading-relaxed text-text-secondary">
+          {/* The figures, in one mono line. Tabular so they line up with the
+              ledger rows underneath. */}
+          <p className="mt-1 font-mono text-xs tabular-nums text-text-muted">
+            {subtopic.topicName} ·{' '}
+            <span className={bandTone[subtopic.band]}>{subtopic.accuracy}% accuracy</span> ·{' '}
+            {subtopic.attempts} attempted
+          </p>
+
+          <p className="mt-2.5 max-w-prose font-body text-[0.8125rem] leading-relaxed text-text-secondary">
             {message}
           </p>
 
@@ -121,38 +138,52 @@ export const FocusCard = ({ subtopic, message, loading, onDrill, drilling }: Foc
               Timing shows as two figures, not one average, because the gap is
               the point: minutes sunk into questions that still come out wrong
               is a different problem from simply being slow. */}
-          <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-border pt-5 sm:grid-cols-4">
-            <Metric value={`${subtopic.accuracy}%`} label="Accuracy" />
-            <Metric value={String(subtopic.attempts)} label="Attempted" />
-            {subtopic.avgSecondsCorrect !== null && (
-              <Metric
-                value={formatDuration(subtopic.avgSecondsCorrect)}
-                label="When right"
-              />
-            )}
-            {subtopic.avgSecondsIncorrect !== null && (
-              <Metric
-                value={formatDuration(subtopic.avgSecondsIncorrect)}
-                label="When wrong"
-                tone={sinkingTime(subtopic) ? 'danger' : undefined}
-              />
-            )}
-          </div>
+          {(subtopic.avgSecondsCorrect !== null || subtopic.avgSecondsIncorrect !== null) && (
+            <div className="mt-4 flex gap-8 border-t border-accent-muted/60 pt-4">
+              {subtopic.avgSecondsCorrect !== null && (
+                <Metric
+                  value={formatDuration(subtopic.avgSecondsCorrect)}
+                  label="When right"
+                />
+              )}
+              {subtopic.avgSecondsIncorrect !== null && (
+                <Metric
+                  value={formatDuration(subtopic.avgSecondsIncorrect)}
+                  label="When wrong"
+                  tone={sinkingTime(subtopic) ? 'danger' : undefined}
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="mt-7">
-        <Button
-          size="lg"
-          onClick={() => onDrill(subtopic)}
-          disabled={drilling || loading}
-          loading={drilling}
-          trailingIcon={drilling ? undefined : 'arrowRight'}
-          className="w-full sm:w-auto"
-        >
-          {loading ? 'Picking your focus…' : drilling ? 'Loading…' : 'Drill this concept'}
-        </Button>
-      </div>
+      {/* The one control on the home screen that breathes. Not a <Button>:
+          this is the only full-bleed pulsing CTA in the app, and pushing that
+          treatment into the shared variant set would licence it everywhere. */}
+      <button
+        type="button"
+        onClick={() => onDrill(subtopic)}
+        disabled={drilling || loading}
+        aria-busy={drilling || undefined}
+        className={clsx(
+          'mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-gradient-accent',
+          'font-body text-sm font-semibold tracking-[-0.01em] text-white shadow-glow',
+          'transition-[filter,transform] duration-150 ease-out-expo hover:brightness-[1.07] active:translate-y-px',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+          'disabled:pointer-events-none disabled:opacity-45',
+          !drilling && !loading && 'animate-pulse-glow'
+        )}
+      >
+        {drilling ? (
+          <span
+            className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+            aria-hidden="true"
+          />
+        ) : null}
+        {loading ? 'Picking your focus…' : drilling ? 'Loading…' : 'Drill this now'}
+        {!loading && !drilling && <Icon name="arrowRight" size={17} strokeWidth={2.4} />}
+      </button>
     </div>
   </motion.section>
 );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button, Panel, PanelHeader, SkeletonCard, StatCard } from '@/components/ui';
+import { Button, Panel, PanelHeader, SkeletonCard } from '@/components/ui';
 import { Page, PageHeader, PageGrid, Section } from '@/components/layout';
 import { ErrorState, EmptyState, useToast } from '@/components/feedback';
 import { useWeaknessScores } from '@/hooks/useWeaknessScores';
@@ -14,7 +14,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { getQuestionsForSubtopic } from '@/services/questions.service';
 import { SubtopicWeakness } from '@/services/weakness.service';
 import { WeaknessRadar } from './components/WeaknessRadar';
-import { WeakTopicCard } from './components/WeakTopicCard';
+import { LedgerRow } from './components/LedgerRow';
 import { FocusCard } from './components/FocusCard';
 import { SkipPanel } from './components/SkipPanel';
 import { TopicTimePanel } from './components/TopicTimePanel';
@@ -86,12 +86,45 @@ export const DashboardView = () => {
   const weakCount =
     data?.subtopics.filter((s) => s.band === 'critical' || s.band === 'weak').length ?? 0;
 
+  /** Drills the top three weak concepts in one session, per the ledger's CTA. */
+  const handleHuntTopThree = async () => {
+    if (!data) return;
+    const targets = data.subtopics.slice(0, 3);
+    if (targets.length === 0) return;
+    setDrillingId('__top3');
+    try {
+      const batches = await Promise.all(
+        targets.map((s) =>
+          getQuestionsForSubtopic(examId, s.subtopicId, 4, s.subtopicName)
+        )
+      );
+      const questions = batches.flat();
+      if (questions.length === 0) {
+        toast.error('No questions available for those concepts yet.');
+        return;
+      }
+      startSession(questions, 'topic', true);
+      navigate('/practice/session');
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setDrillingId(null);
+    }
+  };
+
   return (
     <Page width="wide">
       <PageHeader
         eyebrow={`Hey ${displayName}`}
         title="Hunt your weakness"
-        description="Every session sharpens the ranking below. The engine picks what to fix next — you just show up and drill."
+        description={
+          // Only claim a mapped profile once there is one. On the empty state
+          // this sat above "Ready to begin?" announcing "0 concepts ranked
+          // below", with nothing below it.
+          hasData
+            ? `${data.topics.length} section${data.topics.length === 1 ? '' : 's'} mapped · ${data.subtopics.length} concept${data.subtopics.length === 1 ? '' : 's'} ranked below. The engine picks what to fix next — you just show up and drill.`
+            : 'Every session sharpens the ranking below. The engine picks what to fix next — you just show up and drill.'
+        }
         actions={
           <>
             <Button
@@ -112,10 +145,10 @@ export const DashboardView = () => {
       {/* Loading */}
       {isLoading && (
         <PageGrid>
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-7">
             <SkeletonCard />
           </div>
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-5">
             <SkeletonCard />
           </div>
         </PageGrid>
@@ -138,90 +171,48 @@ export const DashboardView = () => {
 
       {hasData && (
         <div className="space-y-5 xl:space-y-6">
-          {/* ---- Row 1: the numbers ------------------------------------- */}
+          {/* ---- The two figures, editorial scale ----------------------- */}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
-            className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5 xl:gap-6"
+            className="flex items-end justify-between gap-6"
           >
-            <StatCard
-              label="Attempted"
-              value={data.totalAttempts}
-              icon="practice"
-              hint="Questions answered all time"
-            />
-            <StatCard
-              label="Accuracy"
-              value={overallAccuracy}
-              unit="%"
-              icon="trend"
-              tone={overallAccuracy >= 70 ? 'success' : overallAccuracy >= 45 ? 'accent' : 'danger'}
-              hint="Weighted across every concept"
-            />
-            <StatCard
-              label="Weak spots"
-              value={weakCount}
-              icon="alert"
-              tone={weakCount > 0 ? 'warning' : 'success'}
-              hint={weakCount === 0 ? 'Nothing critical right now' : 'Concepts rated weak or worse'}
-            />
-            <StatCard
-              label="Concepts"
-              value={data.subtopics.length}
-              icon="layers"
-              hint={`Across ${data.topics.length} section${data.topics.length === 1 ? '' : 's'}`}
-            />
+            <div className="min-w-0">
+              <div className="mb-1 font-body text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-text-muted">
+                Overall accuracy
+              </div>
+              <div className="flex items-baseline gap-2.5">
+                <span className="font-mono text-[3.25rem] font-bold leading-[0.9] tracking-[-0.04em] tabular-nums text-text-primary lg:text-[4rem]">
+                  {overallAccuracy}
+                  <span className="text-[1.625rem] text-text-muted">%</span>
+                </span>
+                <span className="font-body text-[0.8125rem] font-semibold text-text-muted">
+                  {weakCount === 0
+                    ? 'nothing critical'
+                    : `${weakCount} weak spot${weakCount === 1 ? '' : 's'}`}
+                </span>
+              </div>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <div className="font-mono text-2xl font-bold tabular-nums text-text-primary">
+                {data.totalAttempts.toLocaleString()}
+              </div>
+              <div className="font-body text-[0.65625rem] font-semibold uppercase tracking-[0.08em] text-text-muted">
+                attempted
+              </div>
+            </div>
           </motion.div>
 
-          {/* ---- Row 2: focus hero + quick start ------------------------ */}
-          <PageGrid>
-            {focusSubtopic && (
-              <div className="lg:col-span-8">
-                <FocusCard
-                  subtopic={focusSubtopic}
-                  message={focus.data?.message ?? ''}
-                  loading={focus.isLoading}
-                  onDrill={handleDrill}
-                  drilling={drillingId === focusSubtopic.subtopicId}
-                />
-              </div>
-            )}
-
-            <div className="lg:col-span-4">
-              <Panel className="flex h-full flex-col">
-                <PanelHeader icon="bolt" title="Jump in" />
-
-                <div className="flex flex-1 flex-col gap-2.5">
-                  <QuickStart
-                    title="Weakness Hunt"
-                    body="Pulls from your weakest subtopics and adapts as you go."
-                    onClick={() => navigate('/practice')}
-                  />
-                  <QuickStart
-                    title="Smart Quiz"
-                    body="A 70/20/10 blend of weak spots, revision and fresh material."
-                    onClick={() => navigate('/practice')}
-                  />
-                  <QuickStart
-                    title="Flashcards"
-                    body="Spaced repetition on the concepts you keep dropping."
-                    onClick={() => navigate('/flashcards')}
-                  />
-                </div>
-              </Panel>
-            </div>
-          </PageGrid>
-
-          {/* ---- Row 3: map + pace -------------------------------------- */}
+          {/* ---- Row 1: the instrument + today's move -------------------- */}
           <PageGrid>
             <div className="lg:col-span-7">
-              <Panel className="h-full">
+              <Panel glass elevation="lg" className="h-full">
                 <PanelHeader
-                  icon="spark"
                   title="Weakness map"
                   aside={
-                    <span className="font-body text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-text-faint">
+                    <span className="font-mono text-[0.6875rem] font-bold text-text-secondary">
                       {data.topics.length >= 3
                         ? `${data.topics.length} sections`
                         : `${data.subtopics.length} concepts`}
@@ -232,27 +223,30 @@ export const DashboardView = () => {
               </Panel>
             </div>
 
-            {/* Pace per topic — engine-computed, hides itself until something
-                has been timed. */}
-            <div className="lg:col-span-5">
-              <TopicTimePanel topics={data.topics} />
-            </div>
+            {focusSubtopic && (
+              <div className="lg:col-span-5">
+                <FocusCard
+                  subtopic={focusSubtopic}
+                  message={focus.data?.message ?? ''}
+                  loading={focus.isLoading}
+                  onDrill={handleDrill}
+                  drilling={drillingId === focusSubtopic.subtopicId}
+                />
+              </div>
+            )}
           </PageGrid>
 
-          {/* Skip behaviour — engine-computed, renders itself away when there
-              is no pattern worth showing. */}
-          {skips.data && <SkipPanel data={skips.data} />}
-
-          {/* ---- Ranked weak topics ------------------------------------- */}
+          {/* ---- The ledger --------------------------------------------- */}
           <Section
             title="Ranked by weakness"
-            aside={`${data.subtopics.length} subtopics`}
+            aside={`${data.subtopics.length} subtopic${data.subtopics.length === 1 ? '' : 's'}`}
           >
-            {/* The list was a single 672px column. On desktop it now fans out
-                to three, so the whole ranking is visible without scrolling. */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4">
+            {/* One column is what makes this read as a ranking. It only fans
+                out once the viewport is wide enough that a single column
+                would leave the board half-empty. */}
+            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2 xl:gap-x-5">
               {data.subtopics.map((subtopic, i) => (
-                <WeakTopicCard
+                <LedgerRow
                   key={subtopic.subtopicId}
                   subtopic={subtopic}
                   index={i}
@@ -261,36 +255,43 @@ export const DashboardView = () => {
                 />
               ))}
             </div>
+
+            {data.subtopics.length >= 3 && (
+              <Button
+                variant="secondary"
+                size="lg"
+                fullWidth
+                trailingIcon="arrowRight"
+                className="mt-4 xl:mx-auto xl:w-auto xl:px-10"
+                loading={drillingId === '__top3'}
+                onClick={handleHuntTopThree}
+              >
+                Hunt the top 3
+              </Button>
+            )}
           </Section>
+
+          {/* ---- Pace + skip behaviour ----------------------------------
+              Engine-computed panels that predate the redesign. Both hide
+              themselves when there is no pattern worth showing, so they cost
+              nothing on a thin profile. */}
+          <PageGrid>
+            {/* TopicTimePanel renders null when nothing has been timed, so the
+                grid cell is gated on the same condition — an empty wrapper
+                still claims a column. */}
+            {data.topics.some((t) => t.timedAttempts > 0 && t.avgSeconds !== null) && (
+              <div className="lg:col-span-6">
+                <TopicTimePanel topics={data.topics} />
+              </div>
+            )}
+            {skips.data && (
+              <div className="lg:col-span-6">
+                <SkipPanel data={skips.data} />
+              </div>
+            )}
+          </PageGrid>
         </div>
       )}
     </Page>
   );
 };
-
-/** Compact launcher row inside the "Jump in" panel. */
-const QuickStart = ({
-  title,
-  body,
-  onClick,
-}: {
-  title: string;
-  body: string;
-  onClick: () => void;
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="group flex-1 rounded-lg border border-border bg-surface-raised p-3.5 text-left transition-colors duration-150 hover:border-border-strong hover:bg-surface-overlay focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-  >
-    <div className="flex items-center justify-between gap-3">
-      <span className="font-heading text-[0.9375rem] font-semibold tracking-[-0.01em] text-text-primary">
-        {title}
-      </span>
-      <span className="text-text-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent">
-        →
-      </span>
-    </div>
-    <p className="mt-1 font-body text-xs leading-relaxed text-text-muted">{body}</p>
-  </button>
-);

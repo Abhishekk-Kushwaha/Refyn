@@ -298,8 +298,49 @@
   }
 }
 
+/* Radar sweep. Rotation only, so it composites on the GPU and never
+   invalidates the plot underneath it. */
+@keyframes radar-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sparkbar fill. Animates the transform rather than the width so a column of
+   twenty ledger rows doesn't relayout on every frame. */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Ring draw-on. The element sets `--dash-to` to its own final offset. */
+@keyframes dash-in {
+  to {
+    stroke-dashoffset: var(--dash-to, 0);
+  }
+}
+
 .animate-rise {
   animation: rise var(--dur-slow) var(--ease-out-expo) both;
+}
+
+/* The primary action on the dashboard, and the only thing in the app that
+   breathes. Keeps its resting glow throughout — the ring is additive. */
+.animate-pulse-glow {
+  animation: pulse-ring 3.4s var(--ease-out-expo) infinite;
+}
+
+.animate-grow-x {
+  transform-origin: left;
+  animation: grow-x 900ms var(--ease-out-expo) both;
+}
+
+.animate-dash-in {
+  animation: dash-in 1.3s var(--ease-out-expo) 300ms forwards;
 }
 
 /* Skeleton sweep. The old implementation animated `background-position`

@@ -172,6 +172,11 @@
   --aurora-2: rgba(139, 92, 246, 0.1);
   --aurora-3: rgba(34, 211, 238, 0.07);
   --grid-line: rgba(255, 255, 255, 0.022);
+
+  /* Radar instrument. The sweep is the cyan data hue at low alpha; the glow is
+     what lifts the plotted polygon off the grid behind it. */
+  --radar-sweep: rgba(34, 211, 238, 0.28);
+  --radar-glow: rgba(99, 102, 241, 0.5);
 }
 
 /* ============================================================
@@ -249,4 +254,9 @@
   --aurora-2: rgba(139, 92, 246, 0.09);
   --aurora-3: rgba(34, 211, 238, 0.08);
   --grid-line: rgba(14, 14, 24, 0.032);
+
+  /* Both are read against white here, so the sweep drops and the glow warms
+     toward the deepened indigo rather than washing out. */
+  --radar-sweep: rgba(8, 145, 178, 0.2);
+  --radar-glow: rgba(79, 70, 229, 0.35);
 }

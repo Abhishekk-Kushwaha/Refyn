@@ -172,9 +172,11 @@ export const PracticeReviewView = () => {
                 <div className="relative h-36 w-36 shrink-0 lg:h-40 lg:w-40">
                   <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
                     <defs>
+                      {/* Indigo→cyan, not indigo→violet: this ring is a
+                          reading of the session, and cyan is the data hue. */}
                       <linearGradient id="ring-fill" x1="0" y1="0" x2="120" y2="120">
                         <stop stopColor="var(--indigo-500)" />
-                        <stop offset="1" stopColor="var(--violet-500)" />
+                        <stop offset="1" stopColor="var(--cyan-400)" />
                       </linearGradient>
                     </defs>
                     <circle
@@ -197,14 +199,15 @@ export const PracticeReviewView = () => {
                       initial={{ strokeDashoffset: circumference }}
                       animate={{ strokeDashoffset: strokeOffset }}
                       transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+                      style={{ filter: 'drop-shadow(0 0 8px var(--radar-glow))' }}
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="font-display text-[2.25rem] font-bold leading-none tracking-[-0.04em] tabular-nums text-text-primary">
+                    <span className="font-mono text-[2.5rem] font-bold leading-none tracking-[-0.03em] tabular-nums text-text-primary">
                       {stats.accuracy}
-                      <span className="text-xl text-text-muted">%</span>
+                      <span className="text-lg text-text-muted">%</span>
                     </span>
-                    <span className="mt-1 font-body text-[0.625rem] font-bold uppercase tracking-[0.14em] text-text-faint">
+                    <span className="mt-0.5 font-body text-[0.625rem] font-bold uppercase tracking-[0.1em] text-text-muted">
                       Accuracy
                     </span>
                   </div>
@@ -268,11 +271,19 @@ export const PracticeReviewView = () => {
             <div className="lg:col-span-4">
               <Panel className="lg:sticky lg:top-8">
                 <PanelHeader icon="trend" title="By concept" />
-                <div className="space-y-2.5">
+                {/* One bordered row per concept, banded on the left edge. A
+                    session covers a handful of concepts, so the ranking reads
+                    off the edge colour and the figure — a bar chart here was
+                    three bars pretending to be a distribution. */}
+                <div className="flex flex-col gap-2">
                   {stats.topics.map((topic, i) => {
                     const pct = Math.round((topic.correct / topic.total) * 100);
-                    const bar =
-                      pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-accent' : 'bg-danger';
+                    const edge =
+                      pct >= 70
+                        ? 'border-l-success'
+                        : pct >= 40
+                        ? 'border-l-accent'
+                        : 'border-l-danger';
                     const text =
                       pct >= 70 ? 'text-success' : pct >= 40 ? 'text-accent' : 'text-danger';
 
@@ -282,31 +293,27 @@ export const PracticeReviewView = () => {
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.3 + i * 0.05 }}
+                        className={clsx(
+                          'flex items-center justify-between gap-3 rounded-xl border border-l-[3px] border-border bg-surface-raised px-3.5 py-3',
+                          edge
+                        )}
                       >
-                        <div className="mb-1.5 flex items-baseline justify-between gap-3">
-                          <span className="truncate font-body text-[0.8125rem] font-medium text-text-primary">
+                        <div className="min-w-0">
+                          <div className="truncate font-heading text-[0.84375rem] font-semibold text-text-primary">
                             {topic.topicName}
-                          </span>
-                          <span
-                            className={clsx(
-                              'shrink-0 font-body text-[0.8125rem] font-bold tabular-nums',
-                              text
-                            )}
-                          >
-                            {pct}%
-                          </span>
+                          </div>
+                          <div className="mt-0.5 font-mono text-[0.6875rem] tabular-nums text-text-muted">
+                            {topic.correct}/{topic.total} correct
+                          </div>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${pct}%` }}
-                            transition={{ delay: 0.4 + i * 0.05, duration: 0.5 }}
-                            className={clsx('h-full rounded-full', bar)}
-                          />
-                        </div>
-                        <p className="mt-1 font-body text-[0.6875rem] text-text-faint">
-                          {topic.correct}/{topic.total} correct
-                        </p>
+                        <span
+                          className={clsx(
+                            'shrink-0 font-mono text-[0.9375rem] font-bold tabular-nums',
+                            text
+                          )}
+                        >
+                          {pct}%
+                        </span>
                       </motion.div>
                     );
                   })}

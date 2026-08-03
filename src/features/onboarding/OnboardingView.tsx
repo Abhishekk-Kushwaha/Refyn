@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { BrandMark, Button } from '@/components/ui';
+import { BrandMark, Button, Icon } from '@/components/ui';
 import { motion } from 'framer-motion';
+import clsx from 'clsx';
 
 type Step = 'exam' | 'weak-areas' | 'daily-target';
 
@@ -74,13 +75,18 @@ export const OnboardingView = () => {
               {step === 'daily-target' && 'Daily target'}
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
-            <motion.div
-              className="h-full rounded-full bg-gradient-accent"
-              initial={false}
-              animate={{ width: `${(stepNumber / 3) * 100}%` }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            />
+          {/* One segment per step. A continuous bar at 33% tells you how far
+              in you are; three segments tell you how much is left. */}
+          <div className="flex gap-1.5">
+            {[1, 2, 3].map((n) => (
+              <span
+                key={n}
+                className={clsx(
+                  'h-[5px] flex-1 rounded-full transition-colors duration-300',
+                  n <= stepNumber ? 'bg-gradient-accent' : 'bg-surface-overlay'
+                )}
+              />
+            ))}
           </div>
         </div>
 
@@ -90,32 +96,72 @@ export const OnboardingView = () => {
           {step === 'exam' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
               <div>
-                <h2 className="text-2xl font-semibold text-text-primary mb-2">Which exam are you preparing for?</h2>
-                <p className="text-text-muted text-sm">Choose your target exam to personalize your learning path.</p>
+                <h2 className="mb-2 font-display text-2xl font-bold leading-[1.15] tracking-[-0.025em] text-text-primary">
+                  Which exam are you preparing for?
+                </h2>
+                <p className="font-body text-[0.84375rem] leading-relaxed text-text-secondary">
+                  We tune every drill, card and weakness signal to it.
+                </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="flex flex-col gap-3">
                 {[
-                  { id: 'cat', name: 'CAT 2025', desc: "IIM's flagship MBA entrance" },
-                  { id: 'ssc', name: 'SSC CGL', desc: 'Staff Selection Commission (Coming soon)', disabled: true },
-                  { id: 'gmat', name: 'GMAT', desc: 'Graduate Management Test (Coming soon)', disabled: true },
-                ].map((exam) => (
-                  <button
-                    key={exam.id}
-                    onClick={() => !exam.disabled && updateOnboarding({ selectedExamId: exam.id })}
-                    disabled={exam.disabled}
-                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                      onboarding.selectedExamId === exam.id
-                        ? 'bg-accent-subtle border-accent'
-                        : exam.disabled
-                        ? 'border-border opacity-50 cursor-not-allowed'
-                        : 'border-border hover:border-accent'
-                    }`}
-                  >
-                    <div className="font-semibold text-text-primary">{exam.name}</div>
-                    <div className="text-xs text-text-muted mt-1">{exam.desc}</div>
-                  </button>
-                ))}
+                  { id: 'cat', badge: 'CAT', name: 'CAT 2025', desc: "IIM's flagship MBA entrance" },
+                  { id: 'ssc', badge: 'SSC', name: 'SSC CGL', desc: 'Staff Selection Commission', disabled: true },
+                  { id: 'gmat', badge: 'GMAT', name: 'GMAT', desc: 'Graduate Management Test', disabled: true },
+                ].map((exam) => {
+                  const selected = onboarding.selectedExamId === exam.id;
+                  return (
+                    <button
+                      key={exam.id}
+                      onClick={() => !exam.disabled && updateOnboarding({ selectedExamId: exam.id })}
+                      disabled={exam.disabled}
+                      aria-pressed={selected}
+                      className={clsx(
+                        'flex w-full items-center gap-3.5 rounded-2xl border-[1.5px] p-4 text-left',
+                        'transition-[border-color,background,box-shadow,transform] duration-150 ease-out-expo',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+                        selected
+                          ? 'border-accent bg-accent-subtle shadow-glow-soft'
+                          : exam.disabled
+                          ? 'cursor-not-allowed border-border bg-surface opacity-55'
+                          : 'border-border bg-surface hover:border-border-strong active:scale-[0.99]'
+                      )}
+                    >
+                      <span
+                        className={clsx(
+                          'grid h-[46px] w-[46px] shrink-0 place-items-center rounded-xl font-display font-bold',
+                          exam.badge.length > 3 ? 'text-xs' : 'text-[0.9375rem]',
+                          selected
+                            ? 'bg-gradient-accent text-white shadow-glow-soft'
+                            : 'bg-surface-overlay text-text-muted'
+                        )}
+                      >
+                        {exam.badge}
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-heading text-base font-semibold text-text-primary">
+                          {exam.name}
+                        </span>
+                        <span className="mt-0.5 block font-body text-xs text-text-muted">
+                          {exam.desc}
+                        </span>
+                      </span>
+
+                      {selected && (
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-white">
+                          <Icon name="check" size={14} strokeWidth={3} />
+                        </span>
+                      )}
+                      {exam.disabled && (
+                        <span className="shrink-0 rounded-full bg-surface-overlay px-2.5 py-1 font-body text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-text-muted">
+                          Soon
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -195,17 +241,20 @@ export const OnboardingView = () => {
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          {/* Back stays compact — it's the escape hatch, not the action. */}
+          <div className="flex gap-2.5 pt-4">
             <Button
               variant="secondary"
-              fullWidth
+              size="lg"
               onClick={handlePrevStep}
               disabled={step === 'exam'}
             >
               Back
             </Button>
             <Button
-              fullWidth
+              size="lg"
+              className="flex-1"
+              trailingIcon={step === 'daily-target' ? undefined : 'arrowRight'}
               onClick={handleNextStep}
               disabled={
                 (step === 'exam' && !onboarding.selectedExamId) ||

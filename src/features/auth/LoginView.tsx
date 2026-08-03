@@ -114,7 +114,21 @@ export const LoginView = () => {
       </aside>
 
       {/* ---- Form panel ----------------------------------------------- */}
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10 sm:px-8">
+      <div className="relative z-10 flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-8">
+        {/* The instrument, watermarked. The dashboard's radar is the thing
+            this product actually is, so it stands behind the door to it. */}
+        <svg
+          viewBox="0 0 280 280"
+          className="pointer-events-none absolute -top-10 left-1/2 h-[360px] w-[360px] -translate-x-1/2 opacity-[0.14]"
+          aria-hidden="true"
+        >
+          <g stroke="var(--accent-hover)" fill="none" strokeWidth="1">
+            <polygon points="140,65 205,102.5 205,177.5 140,215 75,177.5 75,102.5" />
+            <polygon points="140,90 183.3,115 183.3,165 140,190 96.7,165 96.7,115" />
+            <polygon points="140,115 161.7,127.5 161.7,152.5 140,165 118.3,152.5 118.3,127.5" />
+          </g>
+        </svg>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -122,12 +136,16 @@ export const LoginView = () => {
           className="w-full max-w-[420px]"
         >
           {/* Mobile brand — the desktop panel already carries this. */}
-          <div className="mb-8 flex flex-col items-center text-center lg:hidden">
-            <BrandMark size={44} className="mb-4" />
-            <h1 className="font-display text-3xl font-bold tracking-[-0.03em] text-text-primary">
+          <div className="mb-7 flex flex-col items-center text-center lg:hidden">
+            {/* Lit, not flat: the mark sits over the aurora, and the glow is
+                what stops it reading as a sticker on the background. */}
+            <span className="mb-4 inline-flex rounded-[20px] shadow-glow">
+              <BrandMark size={64} />
+            </span>
+            <h1 className="font-display text-[1.875rem] font-bold tracking-[-0.03em] text-text-primary">
               Refyn
             </h1>
-            <p className="mt-1.5 font-body text-sm text-text-secondary">
+            <p className="mt-1 font-body text-[0.84375rem] text-text-secondary">
               Hunt your weakness. Own the exam.
             </p>
           </div>
