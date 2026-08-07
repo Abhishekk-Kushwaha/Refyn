@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 const LoginView = lazy(() => import('@/features/auth/LoginView').then((m) => ({ default: m.LoginView })));
 const OnboardingView = lazy(() => import('@/features/onboarding/OnboardingView').then((m) => ({ default: m.OnboardingView })));
 const DashboardView = lazy(() => import('@/features/dashboard/DashboardView').then((m) => ({ default: m.DashboardView })));
+const TodayView = lazy(() => import('@/features/today/TodayView').then((m) => ({ default: m.TodayView })));
 const PracticeConfigView = lazy(() => import('@/features/practice/PracticeConfigView').then((m) => ({ default: m.PracticeConfigView })));
 const PracticeSessionView = lazy(() => import('@/features/practice/PracticeSessionView').then((m) => ({ default: m.PracticeSessionView })));
 const PracticeReviewView = lazy(() => import('@/features/practice/PracticeReviewView').then((m) => ({ default: m.PracticeReviewView })));
@@ -81,6 +82,10 @@ const shellRoutes = [
       {
         element: <Suspense fallback={<PageLoader />}><AppLayout /></Suspense>,
         children: [
+          {
+            path: '/today',
+            element: <LazyComponent component={<TodayView />} />,
+          },
           {
             path: '/dashboard',
             element: <LazyComponent component={<DashboardView />} />,

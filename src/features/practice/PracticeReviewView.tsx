@@ -7,6 +7,7 @@ import { Page, PageGrid, Section } from '@/components/layout';
 import { EmptyState } from '@/components/feedback';
 import { useSessionStore } from '@/stores/sessionStore';
 import { persistSession, AttemptRecord } from '@/services/sessions.service';
+import { recordPracticeDay } from '@/services/streak.service';
 import { aweEngine } from '@/engine/engine';
 import { SolutionCard } from './components/SolutionCard';
 
@@ -98,6 +99,10 @@ export const PracticeReviewView = () => {
       },
       attempts
     );
+
+    // Guarded by the same hasSavedRef as the writes above, so a session marks
+    // its day exactly once however many times this screen re-renders.
+    recordPracticeDay();
 
     // AWE trigger 2 (Doc 5 §10). Trigger 1 (R001/R002) already fired per
     // question inside the session, so only the session-level transitions

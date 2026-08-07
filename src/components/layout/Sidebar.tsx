@@ -15,7 +15,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { path: '/today', label: 'Today', icon: 'spark' },
+  {
+    path: '/dashboard',
+    label: 'Dashboard',
+    icon: 'dashboard',
+    // The weakness drill-down belongs to the dashboard, not to a tab of its own.
+    match: (p) => p === '/dashboard' || p.startsWith('/weakness'),
+  },
   {
     path: '/practice',
     label: 'Practice',

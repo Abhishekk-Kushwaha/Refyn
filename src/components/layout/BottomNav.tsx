@@ -11,7 +11,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { path: '/today', label: 'Today', icon: 'spark' },
+  {
+    path: '/dashboard',
+    label: 'Dashboard',
+    icon: 'dashboard',
+    match: (p) => p === '/dashboard' || p.startsWith('/weakness'),
+  },
   { path: '/practice', label: 'Practice', icon: 'practice', match: (p) => p.startsWith('/practice') },
   { path: '/flashcards', label: 'Cards', icon: 'flashcards' },
   { path: '/board', label: 'Board', icon: 'board', match: (p) => p.startsWith('/board') },
@@ -36,7 +42,9 @@ export const BottomNav = () => {
               onClick={() => navigate(item.path)}
               aria-current={isActive ? 'page' : undefined}
               className={clsx(
-                'relative flex flex-1 flex-col items-center gap-1.5 px-2 pb-2 pt-3',
+                // px-1, not px-2: six tabs on a 375px screen leaves ~62px a
+                // cell, and "Dashboard" needs every pixel of it.
+                'relative flex min-w-0 flex-1 flex-col items-center gap-1.5 px-1 pb-2 pt-3',
                 'font-body text-[0.625rem] font-semibold tracking-wide transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
                 isActive ? 'text-accent' : 'text-text-faint hover:text-text-secondary'
@@ -53,7 +61,7 @@ export const BottomNav = () => {
                 />
               )}
               <Icon name={item.icon} size={21} strokeWidth={isActive ? 2.25 : 2} />
-              <span>{item.label}</span>
+              <span className="max-w-full truncate">{item.label}</span>
             </button>
           );
         })}

@@ -113,6 +113,21 @@ const paths = {
     </>
   ),
   chevronDown: <path d="m6 9 6 6 6-6" />,
+  chevronUp: <path d="m6 15 6-6 6 6" />,
+  // Shield — credibility. The only glyph built from a crest, so an accuracy
+  // badge never reads as a status pill.
+  shield: <path d="M12 2 4 6v6c0 5 8 8 8 8s8-3 8-8V6Z" />,
+  // Flame with a hollow core, distinct from the solid `flame` used for streaks.
+  hot: (
+    <path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .4-2 .4-2s-.4 4 2.6 4c2 0 2-2 2-3 0-2-2-3-2-5s2-3 2-3Z" />
+  ),
+  send: <path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </>
+  ),
 
   // ---- Shell / settings ----------------------------------------------
   // Gear — the only glyph built from a toothed ring.
