@@ -2,11 +2,14 @@ import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import { Icon } from '@/components/ui';
 import { SubtopicWeakness, WeaknessBand } from '@/services/weakness.service';
+import { FocusSignals } from './FocusSignals';
 
 interface FocusCardProps {
   subtopic: SubtopicWeakness;
   /** Coaching prose. Never contains the learner's own figures — see below. */
   message: string;
+  /** Accuracy across every concept, for the comparison bars. */
+  overallAccuracy: number;
   loading: boolean;
   onDrill: (subtopic: SubtopicWeakness) => void;
   drilling: boolean;
@@ -75,7 +78,14 @@ const Metric = ({
   </div>
 );
 
-export const FocusCard = ({ subtopic, message, loading, onDrill, drilling }: FocusCardProps) => (
+export const FocusCard = ({
+  subtopic,
+  message,
+  overallAccuracy,
+  loading,
+  onDrill,
+  drilling,
+}: FocusCardProps) => (
   <motion.section
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
@@ -121,15 +131,18 @@ export const FocusCard = ({ subtopic, message, loading, onDrill, drilling }: Foc
             {subtopic.subtopicName}
           </h2>
 
-          {/* The figures, in one mono line. Tabular so they line up with the
-              ledger rows underneath. */}
-          <p className="mt-1 font-mono text-xs tabular-nums text-text-muted">
-            {subtopic.topicName} ·{' '}
-            <span className={bandTone[subtopic.band]}>{subtopic.accuracy}% accuracy</span> ·{' '}
-            {subtopic.attempts} attempted
-          </p>
+          <p className="mt-1 font-mono text-xs text-text-muted">{subtopic.topicName}</p>
 
-          <p className="mt-2.5 max-w-prose font-body text-[0.8125rem] leading-relaxed text-text-secondary">
+          {/* The figures, drawn. This replaced a mono line reading
+              "0% accuracy · 14 attempted": the same two numbers, but a bar
+              against the learner's own average shows the size of the gap,
+              which is the thing the briefing is actually arguing about. */}
+          <FocusSignals subtopic={subtopic} overallAccuracy={overallAccuracy} />
+
+          {/* The model's reasoning sits under the chart, not above it. The
+              chart answers "how bad, how sure, how much does it matter"; the
+              prose is only here for the "why this one, today". */}
+          <p className="mt-4 max-w-prose border-t border-accent-muted pt-3.5 font-body text-[0.8125rem] leading-relaxed text-text-secondary">
             {message}
           </p>
 
@@ -139,7 +152,7 @@ export const FocusCard = ({ subtopic, message, loading, onDrill, drilling }: Foc
               the point: minutes sunk into questions that still come out wrong
               is a different problem from simply being slow. */}
           {(subtopic.avgSecondsCorrect !== null || subtopic.avgSecondsIncorrect !== null) && (
-            <div className="mt-4 flex gap-8 border-t border-accent-muted/60 pt-4">
+            <div className="mt-4 flex gap-8 border-t border-accent-muted pt-4">
               {subtopic.avgSecondsCorrect !== null && (
                 <Metric
                   value={formatDuration(subtopic.avgSecondsCorrect)}

@@ -228,6 +228,7 @@ export const DashboardView = () => {
                 <FocusCard
                   subtopic={focusSubtopic}
                   message={focus.data?.message ?? ''}
+                  overallAccuracy={overallAccuracy}
                   loading={focus.isLoading}
                   onDrill={handleDrill}
                   drilling={drillingId === focusSubtopic.subtopicId}
